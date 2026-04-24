@@ -20,23 +20,14 @@ class HomeScreen extends StatelessWidget {
           'Daleel',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.of(context)
-                    .pushNamedAndRemoveUntil('/welcome', (route) => false);
-              }
-            },
-          ),
-        ],
+        leading: IconButton(
+          icon: const Icon(Icons.person_outline),
+          onPressed: () => Navigator.of(context).pushNamed('/profile'),
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header banner
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
@@ -50,26 +41,20 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   'Welcome back!',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 14,
-                  ),
+                      color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Your Saved Trips',
+                  'Your Current Trips',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Trips list
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -79,35 +64,28 @@ class HomeScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(
-                        color: Color(0xFF006E51)),
-                  );
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF006E51)));
                 }
-
                 if (snapshot.hasError) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
-                      ),
+                      child: Text('Error: ${snapshot.error}',
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 13)),
                     ),
                   );
                 }
-
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return _buildEmptyState(context);
                 }
-
                 final trips = snapshot.data!.docs;
-
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   itemCount: trips.length,
                   itemBuilder: (context, index) {
-                    final trip =
-                        trips[index].data() as Map<String, dynamic>;
+                    final trip = trips[index].data() as Map<String, dynamic>;
                     final tripId = trips[index].id;
                     return _buildTripCard(context, tripId, trip);
                   },
@@ -118,16 +96,41 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
 
-      // FAB to create new plan
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFFA384DA),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text(
-          'New Trip',
-          style: TextStyle(fontWeight: FontWeight.w600),
+      // FAB with gradient
+      floatingActionButton: GestureDetector(
+        onTap: () => Navigator.of(context).pushNamed('/create-plan'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF006E51).withOpacity(0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                'New Trip',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16),
+              ),
+            ],
+          ),
         ),
-        onPressed: () => Navigator.of(context).pushNamed('/create-plan'),
       ),
     );
   }
@@ -147,10 +150,8 @@ class HomeScreen extends StatelessWidget {
     final budgetTier = budget['tier'] as String? ?? '';
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed(
-        '/itinerary',
-        arguments: tripId,
-      ),
+      onTap: () =>
+          Navigator.of(context).pushNamed('/itinerary', arguments: tripId),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -158,16 +159,14 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card header
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -182,54 +181,42 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.location_on, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    city,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text(city,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      '$numberOfDays days',
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 13),
-                    ),
+                    child: Text('$numberOfDays days',
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 13)),
                   ),
                 ],
               ),
             ),
-
-            // Card body
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Dates
                   Row(
                     children: [
                       const Icon(Icons.calendar_today_outlined,
                           size: 14, color: Color(0xFF006E51)),
                       const SizedBox(width: 6),
-                      Text(
-                        '$startDate → $endDate',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.black87),
-                      ),
+                      Text('$startDate → $endDate',
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87)),
                     ],
                   ),
                   const SizedBox(height: 8),
-
-                  // Travelers + budget row
                   Row(
                     children: [
                       const Icon(Icons.people_outline,
@@ -237,24 +224,18 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         '$adults adult${adults != 1 ? 's' : ''}${children > 0 ? ', $children child${children != 1 ? 'ren' : ''}' : ''}',
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                       ),
                       const SizedBox(width: 16),
                       const Icon(Icons.account_balance_wallet_outlined,
                           size: 14, color: Color(0xFFA384DA)),
                       const SizedBox(width: 6),
-                      Text(
-                        budgetTier.toUpperCase(),
-                        style: TextStyle(
-                            fontSize: 13, color: Colors.grey[700]),
-                      ),
+                      Text(budgetTier.toUpperCase(),
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey[700])),
                     ],
                   ),
-
                   const SizedBox(height: 12),
-
-                  // View button
                   Align(
                     alignment: Alignment.centerRight,
                     child: Container(
@@ -267,14 +248,11 @@ class HomeScreen extends StatelessWidget {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'View Itinerary',
-                            style: TextStyle(
-                              color: Color(0xFF006E51),
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
+                          Text('View Itinerary',
+                              style: TextStyle(
+                                  color: Color(0xFF006E51),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13)),
                           SizedBox(width: 4),
                           Icon(Icons.arrow_forward,
                               size: 14, color: Color(0xFF006E51)),
@@ -298,19 +276,14 @@ class HomeScreen extends StatelessWidget {
         children: [
           Icon(Icons.map_outlined, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
-            'No trips yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[500],
-            ),
-          ),
+          Text('No trips yet',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[500])),
           const SizedBox(height: 8),
-          Text(
-            'Tap "New Trip" to plan your first adventure',
-            style: TextStyle(fontSize: 14, color: Colors.grey[400]),
-          ),
+          Text('Tap "New Trip" to plan your first adventure',
+              style: TextStyle(fontSize: 14, color: Colors.grey[400])),
         ],
       ),
     );

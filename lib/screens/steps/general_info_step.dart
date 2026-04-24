@@ -28,24 +28,7 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
   final List<String> _saudiCities = [
     'Riyadh',
     'Jeddah',
-    'Mecca',
-    'Medina',
-    'Dammam',
-    'Khobar',
-    'Dhahran',
-    'Taif',
-    'Abha',
-    'Tabuk',
-    'Buraidah',
-    'Khamis Mushait',
-    'Hofuf',
-    'Jubail',
-    'Hafar Al-Batin',
-    'Yanbu',
-    'Al Qatif',
-    'Najran',
-    'Al Hasa',
-    'Jazan',
+    'Al-Ula',
   ];
 
   @override
@@ -193,7 +176,9 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                   Text(
                     _selectedCity.isEmpty ? 'Select City' : _selectedCity,
                     style: TextStyle(
-                      color: _selectedCity.isEmpty ? Colors.grey[400] : Colors.black,
+                      color: _selectedCity.isEmpty
+                          ? Colors.grey[400]
+                          : Colors.black,
                       fontSize: 16,
                     ),
                   ),
@@ -230,7 +215,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                         shape: BoxShape.circle,
                         color: Color(0xFFA384DA),
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 20),
+                      child:
+                          const Icon(Icons.add, color: Colors.white, size: 20),
                     ),
                   ),
                   Padding(
@@ -252,7 +238,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                         shape: BoxShape.circle,
                         color: Color(0xFFA384DA),
                       ),
-                      child: const Icon(Icons.remove, color: Colors.white, size: 20),
+                      child: const Icon(Icons.remove,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -284,7 +271,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                         shape: BoxShape.circle,
                         color: Color(0xFFA384DA),
                       ),
-                      child: const Icon(Icons.add, color: Colors.white, size: 20),
+                      child:
+                          const Icon(Icons.add, color: Colors.white, size: 20),
                     ),
                   ),
                   Padding(
@@ -306,7 +294,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                         shape: BoxShape.circle,
                         color: Color(0xFFA384DA),
                       ),
-                      child: const Icon(Icons.remove, color: Colors.white, size: 20),
+                      child: const Icon(Icons.remove,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -368,7 +357,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                     ),
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: () => setState(() => _isSelectingStartDate = false),
+                      onTap: () =>
+                          setState(() => _isSelectingStartDate = false),
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -398,7 +388,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
           // Calendar
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFA384DA).withOpacity(0.3)),
+              border:
+                  Border.all(color: const Color(0xFFA384DA).withOpacity(0.3)),
               borderRadius: BorderRadius.circular(12),
             ),
             padding: const EdgeInsets.all(8),
@@ -407,7 +398,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
               lastDay: DateTime.now().add(const Duration(days: 365)),
               focusedDay: _focusedDay,
               selectedDayPredicate: (day) {
-                return isSameDay(_selectedStartDay, day) || isSameDay(_selectedEndDay, day);
+                return isSameDay(_selectedStartDay, day) ||
+                    isSameDay(_selectedEndDay, day);
               },
               rangeStartDay: _selectedStartDay,
               rangeEndDay: _selectedEndDay,
@@ -419,7 +411,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                     _selectedEndDay = null;
                     _isSelectingStartDate = false;
                   } else {
-                    if (_selectedStartDay != null && selectedDay.isBefore(_selectedStartDay!)) {
+                    if (_selectedStartDay != null &&
+                        selectedDay.isBefore(_selectedStartDay!)) {
                       _selectedEndDay = _selectedStartDay;
                       _selectedStartDay = selectedDay;
                     } else {
@@ -458,7 +451,8 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
               ),
               daysOfWeekStyle: const DaysOfWeekStyle(
                 weekdayStyle: TextStyle(fontWeight: FontWeight.bold),
-                weekendStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                weekendStyle:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
               ),
             ),
           ),

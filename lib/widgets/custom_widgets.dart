@@ -51,18 +51,40 @@ class CustomButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       height: 56,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        child: isLoading
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : Text(text),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(25),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          child: isLoading
+              ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+              : Text(text),
+        ),
       ),
     );
   }
@@ -104,85 +126,61 @@ class DaleelLogoPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
 
-    // Purple wave
     paint.color = const Color(0xFFA384DA);
     Path purplePath = Path();
     purplePath.moveTo(0, size.height * 0.7);
+    purplePath.quadraticBezierTo(size.width * 0.25, size.height * 0.65,
+        size.width * 0.5, size.height * 0.7);
     purplePath.quadraticBezierTo(
-      size.width * 0.25, size.height * 0.65,
-      size.width * 0.5, size.height * 0.7,
-    );
-    purplePath.quadraticBezierTo(
-      size.width * 0.75, size.height * 0.75,
-      size.width, size.height * 0.7,
-    );
+        size.width * 0.75, size.height * 0.75, size.width, size.height * 0.7);
     purplePath.lineTo(size.width, size.height);
     purplePath.lineTo(0, size.height);
     purplePath.close();
     canvas.drawPath(purplePath, paint);
 
-    // Sand
     paint.color = const Color(0xFFFFE381);
     Path sandPath = Path();
     sandPath.moveTo(0, size.height * 0.5);
+    sandPath.quadraticBezierTo(size.width * 0.3, size.height * 0.45,
+        size.width * 0.6, size.height * 0.5);
     sandPath.quadraticBezierTo(
-      size.width * 0.3, size.height * 0.45,
-      size.width * 0.6, size.height * 0.5,
-    );
-    sandPath.quadraticBezierTo(
-      size.width * 0.8, size.height * 0.53,
-      size.width, size.height * 0.5,
-    );
+        size.width * 0.8, size.height * 0.53, size.width, size.height * 0.5);
     sandPath.lineTo(size.width, size.height * 0.7);
+    sandPath.quadraticBezierTo(size.width * 0.75, size.height * 0.75,
+        size.width * 0.5, size.height * 0.7);
     sandPath.quadraticBezierTo(
-      size.width * 0.75, size.height * 0.75,
-      size.width * 0.5, size.height * 0.7,
-    );
-    sandPath.quadraticBezierTo(
-      size.width * 0.25, size.height * 0.65,
-      0, size.height * 0.7,
-    );
+        size.width * 0.25, size.height * 0.65, 0, size.height * 0.7);
     sandPath.close();
     canvas.drawPath(sandPath, paint);
 
-    // Green mountain
     paint.color = const Color(0xFF006E51);
     Path mountainPath = Path();
     mountainPath.moveTo(size.width * 0.5, size.height * 0.15);
     mountainPath.lineTo(size.width * 0.85, size.height * 0.5);
-    mountainPath.quadraticBezierTo(
-      size.width * 0.8, size.height * 0.53,
-      size.width * 0.6, size.height * 0.5,
-    );
-    mountainPath.quadraticBezierTo(
-      size.width * 0.55, size.height * 0.35,
-      size.width * 0.5, size.height * 0.15,
-    );
+    mountainPath.quadraticBezierTo(size.width * 0.8, size.height * 0.53,
+        size.width * 0.6, size.height * 0.5);
+    mountainPath.quadraticBezierTo(size.width * 0.55, size.height * 0.35,
+        size.width * 0.5, size.height * 0.15);
     mountainPath.close();
     canvas.drawPath(mountainPath, paint);
 
-    // Location pin
     paint.color = Colors.white;
     final pinCenter = Offset(size.width * 0.65, size.height * 0.3);
     canvas.drawCircle(pinCenter, size.width * 0.08, paint);
     paint.color = const Color(0xFF006E51);
     canvas.drawCircle(pinCenter, size.width * 0.05, paint);
 
-    // Palm tree
     paint.color = const Color(0xFF006E51);
     final trunkRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(size.width * 0.25, size.height * 0.4, size.width * 0.03, size.height * 0.15),
+      Rect.fromLTWH(size.width * 0.25, size.height * 0.4, size.width * 0.03,
+          size.height * 0.15),
       const Radius.circular(2),
     );
     canvas.drawRRect(trunkRect, paint);
 
-    // Sun
     paint.color = const Color(0xFFFFE381);
     canvas.drawCircle(
-      Offset(size.width * 0.3, size.height * 0.2),
-      size.width * 0.08,
-      paint,
-    );
+        Offset(size.width * 0.3, size.height * 0.2), size.width * 0.08, paint);
   }
 
   @override
