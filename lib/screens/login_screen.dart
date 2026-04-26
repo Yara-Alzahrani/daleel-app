@@ -152,11 +152,12 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else if (!_isPhone && mounted) {
         // Email login successful, navigate to home
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/home', (route) => false);
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -230,14 +231,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _isPhone ? const Color(0xFFA384DA) : Colors.transparent,
+                              color: _isPhone
+                                  ? const Color(0xFFA384DA)
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(25),
                             ),
                             child: Text(
                               'Phone Number',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: _isPhone ? Colors.white : Colors.grey[600],
+                                color:
+                                    _isPhone ? Colors.white : Colors.grey[600],
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
@@ -251,14 +255,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: !_isPhone ? const Color(0xFFA384DA) : Colors.transparent,
+                              color: !_isPhone
+                                  ? const Color(0xFFA384DA)
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(25),
                             ),
                             child: Text(
                               'Email',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: !_isPhone ? Colors.white : Colors.grey[600],
+                                color:
+                                    !_isPhone ? Colors.white : Colors.grey[600],
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
@@ -276,9 +283,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       GestureDetector(
                         onTap: _showPhonePrefixBottomSheet,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFA384DA), width: 2),
+                            border: Border.all(
+                                color: const Color(0xFFA384DA), width: 2),
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: Row(
@@ -351,7 +360,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ResetPasswordScreen(),
+                                builder: (context) =>
+                                    const ResetPasswordScreen(),
                               ),
                             );
                           },

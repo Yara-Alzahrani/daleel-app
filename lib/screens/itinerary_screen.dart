@@ -189,10 +189,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                           fontSize: 16)),
                 ],
               ),
-
             const SizedBox(height: 10),
-
-            // Edit Plan - غير تفاعلي
             if (!_isSaved)
               Container(
                 width: double.infinity,
@@ -263,12 +260,15 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                               color: const Color(0xFFFFE381).withOpacity(0.3),
                               borderRadius: BorderRadius.circular(20),
                             ),
+                            // ✅ الإصلاح: أضفنا maxLines و overflow لمنع الـ overflow
                             child: Text(
                               'Est. ${totalCost['amount']} ${totalCost['currency']}  •  ${totalCost['note'] ?? ''}',
                               style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w500),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

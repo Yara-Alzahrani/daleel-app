@@ -266,7 +266,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           borderRadius: BorderRadius.circular(25),
           borderSide: const BorderSide(color: Color(0xFF006E51), width: 2),
         ),
-        // Gradient border simulation via container
       ),
     );
   }
@@ -305,25 +304,12 @@ class DeleteAccountScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
+              // ✅ شعار دليل بدل الأيقونة
+              Image.asset(
+                'assets/images/daleelfree.png', // ✅ أضف images/
                 width: 160,
                 height: 160,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF006E51), Color(0xFFA384DA)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                        color: const Color(0xFFA384DA).withOpacity(0.3),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8)),
-                  ],
-                ),
-                child: const Icon(Icons.map_outlined,
-                    size: 80, color: Colors.white),
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 40),
               const Text("We're sorry to see you go",

@@ -199,9 +199,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      
+
       print('Starting sign up process...');
-      
+
       // Step 1: Create Firebase Auth account
       String? error = await authService.signUpWithEmail(
         email: _emailController.text.trim(),
@@ -246,20 +246,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         // Navigate to home after short delay
         await Future.delayed(const Duration(seconds: 1));
-        
+
         if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil('/home', (route) => false);
         }
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      
+
       print('Sign up error: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign up failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+                'Sign up failed: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -295,7 +297,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ),
                 const SizedBox(height: 30),
-                
+
                 // Custom Logo Image
                 Container(
                   width: 100,
@@ -342,17 +344,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFF006E51), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF006E51), width: 2),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -374,17 +380,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFF006E51), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF006E51), width: 2),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -404,9 +414,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     GestureDetector(
                       onTap: _showPhonePrefixBottomSheet,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFA384DA), width: 2),
+                          border: Border.all(
+                              color: const Color(0xFFA384DA), width: 2),
                           borderRadius: BorderRadius.circular(25),
                         ),
                         child: Row(
@@ -436,17 +448,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFA384DA), width: 2),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                            borderSide: const BorderSide(
+                                color: Color(0xFFA384DA), width: 2),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(25),
-                            borderSide: const BorderSide(color: Color(0xFF006E51), width: 2),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF006E51), width: 2),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -478,15 +494,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFA384DA), width: 2),
+                            border: Border.all(
+                                color: const Color(0xFFA384DA), width: 2),
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: Text(
-                            _selectedGender.isEmpty ? 'Gender' : _selectedGender,
+                            _selectedGender.isEmpty
+                                ? 'Gender'
+                                : _selectedGender,
                             style: TextStyle(
-                              color: _selectedGender.isEmpty ? Colors.grey[400] : Colors.black,
+                              color: _selectedGender.isEmpty
+                                  ? Colors.grey[400]
+                                  : Colors.black,
                               fontSize: 16,
                             ),
                           ),
@@ -506,15 +528,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 16),
                           decoration: BoxDecoration(
-                            border: Border.all(color: const Color(0xFFA384DA), width: 2),
+                            border: Border.all(
+                                color: const Color(0xFFA384DA), width: 2),
                             borderRadius: BorderRadius.circular(25),
                           ),
                           child: Text(
-                            _selectedNationality.isEmpty ? 'Nationality' : _selectedNationality,
+                            _selectedNationality.isEmpty
+                                ? 'Nationality'
+                                : _selectedNationality,
                             style: TextStyle(
-                              color: _selectedNationality.isEmpty ? Colors.grey[400] : Colors.black,
+                              color: _selectedNationality.isEmpty
+                                  ? Colors.grey[400]
+                                  : Colors.black,
                               fontSize: 16,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -537,17 +565,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     fillColor: Colors.white,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFFA384DA), width: 2),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(25),
-                      borderSide: const BorderSide(color: Color(0xFF006E51), width: 2),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF006E51), width: 2),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
