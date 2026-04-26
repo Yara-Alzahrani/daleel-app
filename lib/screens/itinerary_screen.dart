@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ItineraryScreen extends StatefulWidget {
   final String tripId;
-
   const ItineraryScreen({Key? key, required this.tripId}) : super(key: key);
 
   @override
@@ -52,7 +51,6 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         return;
       }
 
-      // itinerary is stored as a JSON string
       final itinerary = itineraryRaw is String
           ? jsonDecode(itineraryRaw) as Map<String, dynamic>
           : itineraryRaw as Map<String, dynamic>;
@@ -82,16 +80,14 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           .update({'saved': true});
       setState(() => _isSaved = true);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Trip saved! View it anytime from Home.'),
-          backgroundColor: Color(0xFF006E51),
-        ),
-      );
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+        SnackBar(
+            content: Text('Failed to save: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -100,9 +96,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
   @override
   void dispose() {
-    if (!_isLoading && _error == null) {
-      _tabController.dispose();
-    }
+    if (!_isLoading && _error == null) _tabController.dispose();
     super.dispose();
   }
 
@@ -110,85 +104,126 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: Color(0xFF006E51)),
-        ),
-      );
+          body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF006E51))));
     }
 
     if (_error != null) {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: const Color(0xFF006E51),
-          foregroundColor: Colors.white,
-          title: const Text('Itinerary'),
-        ),
+            backgroundColor: const Color(0xFF006E51),
+            foregroundColor: Colors.white,
+            title: const Text('Itinerary')),
         body: Center(
-          child: Text(_error!, style: const TextStyle(color: Colors.red)),
-        ),
+            child: Text(_error!, style: const TextStyle(color: Colors.red))),
       );
     }
 
     final days = _itinerary!['days'] as List;
     final title = _itinerary!['title'] as String? ?? 'Your Itinerary';
     final summary = _itinerary!['summary'] as String? ?? '';
-    final totalCost = _itinerary!['totalEstimatedCost'] as Map<String, dynamic>?;
+    final totalCost =
+        _itinerary!['totalEstimatedCost'] as Map<String, dynamic>?;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: _isSaved
-          ? Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              color: Colors.white,
-              child: const Row(
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        color: Colors.white,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isSaved)
+              GestureDetector(
+                onTap: _isSaving ? null : _savePlan,
+                child: Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                          color: const Color(0xFF006E51).withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: Center(
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.rocket_launch_outlined,
+                                  color: Colors.white, size: 20),
+                              SizedBox(width: 8),
+                              Text('Start This Trip',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                  ),
+                ),
+              )
+            else
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.check_circle, color: Color(0xFF006E51), size: 20),
                   SizedBox(width: 8),
-                  Text(
-                    'Trip saved',
-                    style: TextStyle(
-                      color: Color(0xFF006E51),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
+                  Text('Trip saved',
+                      style: TextStyle(
+                          color: Color(0xFF006E51),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16)),
                 ],
               ),
-            )
-          : Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF006E51),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
+
+            const SizedBox(height: 10),
+
+            // Edit Plan - غير تفاعلي
+            if (!_isSaved)
+              Container(
+                width: double.infinity,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF006E51).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_outlined,
+                          color: Color(0xFF006E51), size: 18),
+                      SizedBox(width: 8),
+                      Text('Edit Plan',
+                          style: TextStyle(
+                              color: Color(0xFF006E51),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500)),
+                    ],
                   ),
                 ),
-                onPressed: _isSaving ? null : _savePlan,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.bookmark_outline),
-                label: Text(
-                  _isSaving ? 'Saving...' : 'Save Plan',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
-                ),
               ),
-            ),
+          ],
+        ),
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: _calculateExpandedHeight(title, summary, totalCost),
             pinned: true,
             backgroundColor: const Color(0xFF006E51),
             foregroundColor: Colors.white,
@@ -201,63 +236,48 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                     colors: [Color(0xFF006E51), Color(0xFFA384DA)],
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 72, 16, 56),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        summary,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (totalCost != null) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE381).withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            'Est. ${totalCost['amount']} ${totalCost['currency']}  •  ${totalCost['note'] ?? ''}',
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 48, 16, 56),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(title,
                             style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
+                        const SizedBox(height: 6),
+                        Text(summary,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.85))),
+                        if (totalCost != null) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE381).withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'Est. ${totalCost['amount']} ${totalCost['currency']}  •  ${totalCost['note'] ?? ''}',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.home_outlined),
-                onPressed: () => Navigator.of(context)
-                    .pushNamedAndRemoveUntil('/home', (route) => false),
-              ),
-            ],
             bottom: TabBar(
               controller: _tabController,
               isScrollable: true,
@@ -273,13 +293,23 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         ],
         body: TabBarView(
           controller: _tabController,
-          children: days.map((d) {
-            final day = d as Map<String, dynamic>;
-            return _buildDayTab(day);
-          }).toList(),
+          children:
+              days.map((d) => _buildDayTab(d as Map<String, dynamic>)).toList(),
         ),
       ),
     );
+  }
+
+  double _calculateExpandedHeight(
+      String title, String summary, Map<String, dynamic>? totalCost) {
+    double height = 180;
+    if (title.length > 40) height += 24;
+    if (title.length > 80) height += 24;
+    if (summary.length > 80) height += 20;
+    if (summary.length > 160) height += 20;
+    if (summary.length > 240) height += 20;
+    if (totalCost != null) height += 44;
+    return height;
   }
 
   Widget _buildDayTab(Map<String, dynamic> day) {
@@ -290,40 +320,34 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Day header
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF006E51).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-          ),
+              color: const Color(0xFF006E51).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
               const Icon(Icons.wb_sunny_outlined, color: Color(0xFF006E51)),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    theme,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFF006E51),
-                    ),
-                  ),
-                  Text(
-                    date,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(theme,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF006E51))),
+                    Text(date,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-
-        // Slots
         ...slots.map((s) => _buildSlotCard(s as Map<String, dynamic>)).toList(),
       ],
     );
@@ -339,7 +363,6 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final location = slot['location'] as Map<String, dynamic>?;
     final cost = slot['estimatedCost'] as Map<String, dynamic>?;
     final tips = slot['tips'] as List? ?? [];
-
     final color = _slotColor(type);
     final icon = _slotIcon(type);
     final periodIcon = _periodIcon(period);
@@ -348,143 +371,110 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
+                color: color.withOpacity(0.1),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16))),
             child: Row(
               children: [
                 Icon(periodIcon, size: 16, color: color),
                 const SizedBox(width: 6),
-                Text(
-                  '$period  •  $timeRange',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: color,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Spacer(),
+                Expanded(
+                    child: Text('$period  •  $timeRange',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: color,
+                            fontWeight: FontWeight.w500))),
                 Icon(icon, size: 16, color: color),
                 const SizedBox(width: 4),
-                Text(
-                  type,
-                  style: TextStyle(fontSize: 12, color: color),
-                ),
+                Text(type, style: TextStyle(fontSize: 12, color: color)),
               ],
             ),
           ),
-
-          // Body
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
                 const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                ),
-
+                Text(description,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 16, color: Color(0xFF006E51)),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '${location['name']}, ${location['area']}',
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF006E51)),
-                        ),
-                      ),
-                    ],
-                  ),
+                  Row(children: [
+                    const Icon(Icons.location_on_outlined,
+                        size: 16, color: Color(0xFF006E51)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                        child: Text('${location['name']}, ${location['area']}',
+                            style: const TextStyle(
+                                fontSize: 13, color: Color(0xFF006E51)))),
+                  ]),
                 ],
-
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    if (duration.isNotEmpty) ...[
-                      const Icon(Icons.access_time,
-                          size: 14, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(duration,
-                          style: const TextStyle(
-                              fontSize: 13, color: Colors.grey)),
-                      const SizedBox(width: 16),
-                    ],
-                    if (cost != null) ...[
-                      const Icon(Icons.attach_money,
-                          size: 14, color: Colors.grey),
-                      Text(
-                        cost['amount'] == 0
-                            ? 'Free'
-                            : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
+                Row(children: [
+                  if (duration.isNotEmpty) ...[
+                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(duration,
                         style:
-                            const TextStyle(fontSize: 13, color: Colors.grey),
-                      ),
-                    ],
+                            const TextStyle(fontSize: 13, color: Colors.grey)),
+                    const SizedBox(width: 16),
                   ],
-                ),
-
+                  if (cost != null) ...[
+                    const Icon(Icons.attach_money,
+                        size: 14, color: Colors.grey),
+                    Flexible(
+                        child: Text(
+                      cost['amount'] == 0
+                          ? 'Free'
+                          : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                    )),
+                  ],
+                ]),
                 if (tips.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Tips',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFA384DA),
-                    ),
-                  ),
+                  const Text('Tips',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFA384DA))),
                   const SizedBox(height: 4),
                   ...tips.map((tip) => Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('• ',
-                                style: TextStyle(color: Color(0xFFA384DA))),
-                            Expanded(
-                              child: Text(
-                                tip.toString(),
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey[700]),
-                              ),
-                            ),
-                          ],
-                        ),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style: TextStyle(color: Color(0xFFA384DA))),
+                              Expanded(
+                                  child: Text(tip.toString(),
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[700]))),
+                            ]),
                       )),
                 ],
               ],

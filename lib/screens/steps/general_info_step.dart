@@ -7,35 +7,27 @@ class GeneralInfoStep extends StatefulWidget {
   final TripPreferences preferences;
   final VoidCallback onContinue;
 
-  const GeneralInfoStep({
-    Key? key,
-    required this.preferences,
-    required this.onContinue,
-  }) : super(key: key);
+  const GeneralInfoStep(
+      {Key? key, required this.preferences, required this.onContinue})
+      : super(key: key);
 
   @override
   State<GeneralInfoStep> createState() => _GeneralInfoStepState();
 }
 
 class _GeneralInfoStepState extends State<GeneralInfoStep> {
-  final _cityController = TextEditingController();
   late DateTime _focusedDay;
   DateTime? _selectedStartDay;
   DateTime? _selectedEndDay;
   bool _isSelectingStartDate = true;
   String _selectedCity = '';
 
-  final List<String> _saudiCities = [
-    'Riyadh',
-    'Jeddah',
-    'Al-Ula',
-  ];
+  final List<String> _saudiCities = ['Riyadh', 'Jeddah', 'Al-Ula'];
 
   @override
   void initState() {
     super.initState();
     _selectedCity = widget.preferences.city;
-    _cityController.text = _selectedCity;
     _focusedDay = DateTime.now();
     _selectedStartDay = widget.preferences.startDate;
     _selectedEndDay = widget.preferences.endDate;
@@ -45,21 +37,15 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Select City',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              const Text('Select City',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               Flexible(
                 child: ListView.builder(
@@ -69,15 +55,10 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                     final city = _saudiCities[index];
                     return ListTile(
                       title: Text(city),
-                      leading: const Icon(
-                        Icons.location_city,
-                        color: Color(0xFF006E51),
-                      ),
+                      leading: const Icon(Icons.location_city,
+                          color: Color(0xFF006E51)),
                       onTap: () {
-                        setState(() {
-                          _selectedCity = city;
-                          _cityController.text = city;
-                        });
+                        setState(() => _selectedCity = city);
                         Navigator.pop(context);
                       },
                     );
@@ -91,53 +72,32 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
     );
   }
 
-  @override
-  void dispose() {
-    _cityController.dispose();
-    super.dispose();
-  }
-
-  void _incrementChildren() {
-    setState(() => widget.preferences.numberOfChildren++);
-  }
-
+  void _incrementChildren() =>
+      setState(() => widget.preferences.numberOfChildren++);
   void _decrementChildren() {
-    if (widget.preferences.numberOfChildren > 0) {
+    if (widget.preferences.numberOfChildren > 0)
       setState(() => widget.preferences.numberOfChildren--);
-    }
   }
 
-  void _incrementParents() {
-    setState(() => widget.preferences.numberOfParents++);
-  }
-
+  void _incrementParents() =>
+      setState(() => widget.preferences.numberOfParents++);
   void _decrementParents() {
-    if (widget.preferences.numberOfParents > 1) {
+    if (widget.preferences.numberOfParents > 1)
       setState(() => widget.preferences.numberOfParents--);
-    }
   }
 
   void _handleContinue() {
     if (_selectedCity.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a city'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Please select a city'), backgroundColor: Colors.red));
       return;
     }
-
     if (_selectedStartDay == null || _selectedEndDay == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Please select start and end dates'),
-          backgroundColor: Colors.red,
-        ),
-      );
+          backgroundColor: Colors.red));
       return;
     }
-
     widget.preferences.city = _selectedCity;
     widget.preferences.startDate = _selectedStartDay;
     widget.preferences.endDate = _selectedEndDay;
@@ -151,158 +111,111 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // City Input
-          const Text(
-            'City',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
+          // City - label جنب الخانة
           GestureDetector(
             onTap: _showCityBottomSheet,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFA384DA), width: 2),
-                borderRadius: BorderRadius.circular(25),
-                color: Colors.white,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _selectedCity.isEmpty ? 'Select City' : _selectedCity,
+            child: Row(
+              children: [
+                // label
+                Text('City  ',
                     style: TextStyle(
-                      color: _selectedCity.isEmpty
-                          ? Colors.grey[400]
-                          : Colors.black,
-                      fontSize: 16,
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w400)),
+                // gradient border field
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(1.5),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(25),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _selectedCity.isEmpty
+                                ? 'Select City'
+                                : _selectedCity,
+                            style: TextStyle(
+                              color: _selectedCity.isEmpty
+                                  ? Colors.grey[400]
+                                  : Colors.black87,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down,
+                              color: Color(0xFFA384DA), size: 22),
+                        ],
+                      ),
                     ),
                   ),
-                  const Icon(
-                    Icons.arrow_drop_down,
-                    color: Color(0xFFA384DA),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
           // Number of Children
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Number of\nChildren',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
-                ),
-              ),
+              Text('Number of Children',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[700])),
               Row(
                 children: [
-                  IconButton(
-                    onPressed: _incrementChildren,
-                    icon: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFA384DA),
-                      ),
-                      child:
-                          const Icon(Icons.add, color: Colors.white, size: 20),
-                    ),
-                  ),
+                  _counterBtn(Icons.add, _incrementChildren),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      '${widget.preferences.numberOfChildren}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('${widget.preferences.numberOfChildren}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
-                  IconButton(
-                    onPressed: _decrementChildren,
-                    icon: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFA384DA),
-                      ),
-                      child: const Icon(Icons.remove,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
+                  _counterBtn(Icons.remove, _decrementChildren),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Number of Parents
+          // Number of Adults
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Number of\nparents',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
-                ),
-              ),
+              Text('Number of Adults',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey[700])),
               Row(
                 children: [
-                  IconButton(
-                    onPressed: _incrementParents,
-                    icon: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFA384DA),
-                      ),
-                      child:
-                          const Icon(Icons.add, color: Colors.white, size: 20),
-                    ),
-                  ),
+                  _counterBtn(Icons.add, _incrementParents),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      '${widget.preferences.numberOfParents}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('${widget.preferences.numberOfParents}',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
-                  IconButton(
-                    onPressed: _decrementParents,
-                    icon: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFA384DA),
-                      ),
-                      child: const Icon(Icons.remove,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
+                  _counterBtn(Icons.remove, _decrementParents),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
           // Date Selection
           Row(
@@ -311,13 +224,9 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Start date',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    Text('Start date',
+                        style:
+                            TextStyle(fontSize: 13, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () => setState(() => _isSelectingStartDate = true),
@@ -348,13 +257,9 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'End date',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    Text('End date',
+                        style:
+                            TextStyle(fontSize: 13, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () =>
@@ -385,7 +290,6 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
           ),
           const SizedBox(height: 16),
 
-          // Calendar
           Container(
             decoration: BoxDecoration(
               border:
@@ -397,10 +301,9 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
               firstDay: DateTime.now(),
               lastDay: DateTime.now().add(const Duration(days: 365)),
               focusedDay: _focusedDay,
-              selectedDayPredicate: (day) {
-                return isSameDay(_selectedStartDay, day) ||
-                    isSameDay(_selectedEndDay, day);
-              },
+              selectedDayPredicate: (day) =>
+                  isSameDay(_selectedStartDay, day) ||
+                  isSameDay(_selectedEndDay, day),
               rangeStartDay: _selectedStartDay,
               rangeEndDay: _selectedEndDay,
               onDaySelected: (selectedDay, focusedDay) {
@@ -423,31 +326,22 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
               },
               calendarStyle: CalendarStyle(
                 selectedDecoration: const BoxDecoration(
-                  color: Color(0xFF006E51),
-                  shape: BoxShape.circle,
-                ),
+                    color: Color(0xFF006E51), shape: BoxShape.circle),
                 rangeStartDecoration: const BoxDecoration(
-                  color: Color(0xFF006E51),
-                  shape: BoxShape.circle,
-                ),
+                    color: Color(0xFF006E51), shape: BoxShape.circle),
                 rangeEndDecoration: const BoxDecoration(
-                  color: Color(0xFF006E51),
-                  shape: BoxShape.circle,
-                ),
+                    color: Color(0xFF006E51), shape: BoxShape.circle),
                 rangeHighlightColor: const Color(0xFFA384DA).withOpacity(0.2),
                 todayDecoration: BoxDecoration(
-                  color: const Color(0xFFA384DA).withOpacity(0.3),
-                  shape: BoxShape.circle,
-                ),
+                    color: const Color(0xFFA384DA).withOpacity(0.3),
+                    shape: BoxShape.circle),
                 outsideDaysVisible: false,
               ),
               headerStyle: const HeaderStyle(
                 formatButtonVisible: false,
                 titleCentered: true,
-                titleTextStyle: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                titleTextStyle:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               daysOfWeekStyle: const DaysOfWeekStyle(
                 weekdayStyle: TextStyle(fontWeight: FontWeight.bold),
@@ -457,13 +351,21 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
             ),
           ),
           const SizedBox(height: 32),
-
-          // Continue Button
-          CustomButton(
-            text: 'Continue',
-            onPressed: _handleContinue,
-          ),
+          CustomButton(text: 'Continue', onPressed: _handleContinue),
         ],
+      ),
+    );
+  }
+
+  Widget _counterBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: const BoxDecoration(
+            shape: BoxShape.circle, color: Color(0xFF006E51)),
+        child: Icon(icon, color: Colors.white, size: 18),
       ),
     );
   }

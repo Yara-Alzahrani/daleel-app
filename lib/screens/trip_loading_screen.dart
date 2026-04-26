@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TripLoadingScreen extends StatefulWidget {
   final String tripId;
-
   const TripLoadingScreen({Key? key, required this.tripId}) : super(key: key);
 
   @override
@@ -12,14 +11,15 @@ class TripLoadingScreen extends StatefulWidget {
 }
 
 class _TripLoadingScreenState extends State<TripLoadingScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
+    with TickerProviderStateMixin {
+  late AnimationController _floatController;
+  late Animation<double> _floatAnimation;
   StreamSubscription<DocumentSnapshot>? _tripSubscription;
 
   final List<String> _loadingMessages = [
     'Analyzing your preferences...',
     'Discovering the best spots in your city...',
-    'Crafting your personalized itinerary...',
+    'Crafting your personalized plan...',
     'Adding local tips and recommendations...',
     'Almost ready!',
   ];
@@ -30,18 +30,20 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
   void initState() {
     super.initState();
 
-    _animationController = AnimationController(
+    // Animation ترتفع من الأسفل للأعلى وترجع بشكل مستمر
+    _floatController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat();
+    )..repeat(reverse: true);
 
-    // Cycle through loading messages every 3 seconds
+    _floatAnimation = Tween<double>(begin: 0, end: -30).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+
     _messageTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) {
-        setState(() {
-          _messageIndex = (_messageIndex + 1) % _loadingMessages.length;
-        });
-      }
+      if (mounted)
+        setState(() =>
+            _messageIndex = (_messageIndex + 1) % _loadingMessages.length);
     });
 
     _listenToTrip();
@@ -54,21 +56,15 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
         .snapshots()
         .listen((snapshot) {
       if (!snapshot.exists || !mounted) return;
-
       final status = snapshot.data()?['status'] as String?;
-
       if (status == 'completed') {
         _tripSubscription?.cancel();
-        Navigator.of(context).pushReplacementNamed(
-          '/itinerary',
-          arguments: widget.tripId,
-        );
+        Navigator.of(context)
+            .pushReplacementNamed('/itinerary', arguments: widget.tripId);
       } else if (status == 'failed') {
         _tripSubscription?.cancel();
-        _showErrorDialog(
-          snapshot.data()?['errorMessage'] as String? ??
-              'Something went wrong. Please try again.',
-        );
+        _showErrorDialog(snapshot.data()?['errorMessage'] as String? ??
+            'Something went wrong. Please try again.');
       }
     });
   }
@@ -84,16 +80,12 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // close dialog
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                '/home',
-                (route) => false,
-              );
+              Navigator.of(context).pop();
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/home', (route) => false);
             },
-            child: const Text(
-              'Go Home',
-              style: TextStyle(color: Color(0xFF006E51)),
-            ),
+            child: const Text('Go Home',
+                style: TextStyle(color: Color(0xFF006E51))),
           ),
         ],
       ),
@@ -102,7 +94,7 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _floatController.dispose();
     _tripSubscription?.cancel();
     _messageTimer?.cancel();
     super.dispose();
@@ -118,53 +110,31 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Animated logo / spinner
-              RotationTransition(
-                turns: _animationController,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const SweepGradient(
-                      colors: [
-                        Color(0xFF006E51),
-                        Color(0xFFA384DA),
-                        Color(0xFFFFE381),
-                        Color(0xFF006E51),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF006E51).withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        Icons.map_outlined,
-                        size: 40,
-                        color: Color(0xFF006E51),
-                      ),
-                    ),
-                  ),
+              // الشعار مع animation ترتفع من الأسفل للأعلى
+              AnimatedBuilder(
+                animation: _floatAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _floatAnimation.value),
+                    child: child,
+                  );
+                },
+                child: Image.asset(
+                  'assets/images/daleelfree.png',
+                  width: 140,
+                  height: 140,
+                  fit: BoxFit.contain,
                 ),
               ),
 
               const SizedBox(height: 48),
 
               const Text(
-                'Creating Your Itinerary',
+                'Creating Your Plan',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF006E51),
-                ),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF006E51)),
                 textAlign: TextAlign.center,
               ),
 
@@ -175,10 +145,7 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
                 child: Text(
                   _loadingMessages[_messageIndex],
                   key: ValueKey(_messageIndex),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -197,7 +164,7 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
                     decoration: BoxDecoration(
                       color: i == _messageIndex % 5
                           ? const Color(0xFF006E51)
-                          : const Color(0xFFA384DA).withValues(alpha: 0.4),
+                          : const Color(0xFFA384DA).withOpacity(0.4),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -206,10 +173,8 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
 
               const SizedBox(height: 64),
 
-              Text(
-                'This usually takes under a minute.',
-                style: TextStyle(fontSize: 13, color: Colors.grey[400]),
-              ),
+              Text('This usually takes under a minute.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[400])),
             ],
           ),
         ),
