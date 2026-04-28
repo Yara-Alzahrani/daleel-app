@@ -18,7 +18,10 @@ class PastPlansScreen extends StatelessWidget {
       } else {
         endDate = DateTime.parse(endDateStr);
       }
-      return endDate.isBefore(DateTime.now());
+      // ✅ مقارنة بالتاريخ فقط بدون الوقت
+      final today = DateTime(
+          DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      return endDate.isBefore(today);
     } catch (_) {
       return false;
     }
@@ -51,7 +54,6 @@ class PastPlansScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header banner
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
@@ -71,9 +73,7 @@ class PastPlansScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold),
             ),
           ),
-
           const SizedBox(height: 16),
-
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance

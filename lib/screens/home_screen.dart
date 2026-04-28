@@ -6,6 +6,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
+  // ✅ فلتر الرحلات الحالية فقط (مو منتهية)
+  bool _isTripCurrent(Map<String, dynamic> trip) {
+    final prefs = trip['preferences'] as Map<String, dynamic>? ?? {};
+    final dateRange = prefs['dateRange'] as Map<String, dynamic>? ?? {};
+    final endDateStr = dateRange['endDate'] as String? ?? '';
+    if (endDateStr.isEmpty) return true;
+    try {
+      final endDate = DateTime.parse(endDateStr);
+      final today = DateTime(
+          DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      return !endDate.isBefore(today);
+    } catch (_) {
+      return true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -94,7 +110,15 @@ class HomeScreen extends StatelessWidget {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return _buildEmptyState(context);
                 }
-                final trips = snapshot.data!.docs;
+
+                // ✅ فلتر الرحلات الحالية فقط
+                final trips = snapshot.data!.docs.where((doc) {
+                  final trip = doc.data() as Map<String, dynamic>;
+                  return _isTripCurrent(trip);
+                }).toList();
+
+                if (trips.isEmpty) return _buildEmptyState(context);
+
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   itemCount: trips.length,
@@ -163,13 +187,11 @@ class HomeScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        // ── حدود رمادية خفيفة ──
         border: Border.all(color: Colors.grey.withOpacity(0.18), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -221,8 +243,6 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
-
-          // Card body
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -258,8 +278,6 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-
-                // ── View Details button ──
                 Align(
                   alignment: Alignment.centerRight,
                   child: _ViewDetailsButton(

@@ -73,7 +73,14 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          // ✅ لو في أول step يرجع للهوم، غير كذلك يرجع للـ step اللي قبله
+          onPressed: () {
+            if (_currentStep > 0) {
+              _previousStep();
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: const Text(
           'Create a Plan',
@@ -100,7 +107,6 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                 return Expanded(
                   child: Row(
                     children: [
-                      // Connector line before
                       if (index > 0)
                         Expanded(
                           child: Container(
@@ -120,8 +126,6 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                             ),
                           ),
                         ),
-
-                      // Circle
                       GestureDetector(
                         onTap: () => _onStepTapped(index),
                         child: AnimatedContainer(
@@ -168,8 +172,6 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
                           ),
                         ),
                       ),
-
-                      // Connector line after
                       if (index < 4)
                         Expanded(
                           child: Container(
@@ -186,7 +188,6 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
             ),
           ),
 
-          // ── Step Content ─────────────────────────────────────────
           Expanded(child: _buildStep()),
         ],
       ),

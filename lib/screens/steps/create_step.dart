@@ -35,8 +35,7 @@ class _CreateStepState extends State<CreateStep> {
       final numberOfDays =
           prefs.endDate!.difference(prefs.startDate!).inDays + 1;
 
-      final budgetRange =
-          AppConfig.budgetRanges[prefs.budget] ?? '';
+      final budgetRange = AppConfig.budgetRanges[prefs.budget] ?? '';
 
       // Build the nested Firestore document
       final tripData = {
@@ -68,9 +67,8 @@ class _CreateStepState extends State<CreateStep> {
       };
 
       // 1. Write to Firestore
-      final docRef = await FirebaseFirestore.instance
-          .collection('trips')
-          .add(tripData);
+      final docRef =
+          await FirebaseFirestore.instance.collection('trips').add(tripData);
 
       // 2. Call n8n webhook (fire and forget — n8n will write result back)
       _callWebhook(docRef.id, user.uid, prefs, numberOfDays, budgetRange);
@@ -162,7 +160,7 @@ class _CreateStepState extends State<CreateStep> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFA384DA).withOpacity(0.1),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: const Color(0xFFA384DA), width: 2),
             ),
@@ -181,7 +179,8 @@ class _CreateStepState extends State<CreateStep> {
                   '${widget.preferences.numberOfParents} Adult(s), ${widget.preferences.numberOfChildren} Child(ren)',
                 ),
                 const Divider(height: 24),
-                _buildInfoRow('Budget', widget.preferences.budget.toUpperCase()),
+                _buildInfoRow(
+                    'Budget', widget.preferences.budget.toUpperCase()),
                 const Divider(height: 24),
                 _buildListRow('Activities', widget.preferences.activities),
                 const Divider(height: 24),

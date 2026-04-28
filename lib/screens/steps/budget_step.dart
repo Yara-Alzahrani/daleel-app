@@ -33,12 +33,6 @@ class _BudgetStepState extends State<BudgetStep> {
       'icon': Icons.account_balance_wallet_outlined
     },
     {
-      'title': 'Comfort',
-      'subtitle': '600 - 1000 SAR',
-      'value': 'comfort',
-      'icon': Icons.star_outline
-    },
-    {
       'title': 'Luxury',
       'subtitle': '1000+ SAR',
       'value': 'luxury',
