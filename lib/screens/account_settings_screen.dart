@@ -257,7 +257,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(25),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: Colors.transparent,
             width: 0,
           ),

@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import '../services/app_config.dart';
+import '../widgets/review_changes_sheet.dart';
 
 class ItineraryScreen extends StatefulWidget {
   final String tripId;
@@ -18,38 +22,27 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   late TabController _tabController;
   bool _isSaved = false;
   bool _isSaving = false;
+  bool _isRegenerating = false;
+
+  final List<Map<String, dynamic>> _selectedSlots = [];
+  StreamSubscription<DocumentSnapshot>? _tripSubscription;
 
   @override
   void initState() {
     super.initState();
-    _loadItinerary();
+    _listenToTrip();
   }
 
-  Future<void> _loadItinerary() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .get();
-
-      if (!doc.exists) {
-        setState(() {
-          _error = 'Trip not found.';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final data = doc.data()!;
+  void _listenToTrip() {
+    _tripSubscription = FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!snapshot.exists || !mounted) return;
+      final data = snapshot.data()!;
       final itineraryRaw = data['itinerary'];
-
-      if (itineraryRaw == null) {
-        setState(() {
-          _error = 'Itinerary not generated yet.';
-          _isLoading = false;
-        });
-        return;
-      }
+      if (itineraryRaw == null) return;
 
       final itinerary = itineraryRaw is String
           ? jsonDecode(itineraryRaw) as Map<String, dynamic>
@@ -61,13 +54,58 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         _itinerary = itinerary;
         _isSaved = data['saved'] == true;
         _isLoading = false;
+        _isRegenerating = false;
+        _selectedSlots.clear();
         _tabController = TabController(length: days.length, vsync: this);
       });
-    } catch (e) {
+    }, onError: (e) {
       setState(() {
         _error = 'Failed to load itinerary: $e';
         _isLoading = false;
       });
+    });
+  }
+
+  void _toggleSlot(int dayNumber, String period, String name) {
+    setState(() {
+      final exists = _selectedSlots.any(
+          (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      if (exists) {
+        _selectedSlots.removeWhere(
+            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      } else {
+        _selectedSlots
+            .add({'dayNumber': dayNumber, 'period': period, 'name': name});
+      }
+    });
+  }
+
+  void _showReviewSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => ReviewChangesSheet(
+        selectedSlots: List.from(_selectedSlots),
+        onConfirm: _onConfirmRegenerate,
+      ),
+    );
+  }
+
+  Future<void> _onConfirmRegenerate() async {
+    setState(() => _isRegenerating = true);
+    try {
+      await http.post(
+        Uri.parse(AppConfig.n8nRegenerateUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'tripId': widget.tripId,
+          'slotsToSwap': _selectedSlots,
+        }),
+      );
+    } catch (_) {
+      // non-fatal — stream updates UI when Firestore changes
     }
   }
 
@@ -87,7 +125,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('Failed to save: $e'), backgroundColor: Colors.red),
+            content: Text('Failed to save: $e'),
+            backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -96,6 +135,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
   @override
   void dispose() {
+    _tripSubscription?.cancel();
     if (!_isLoading && _error == null) _tabController.dispose();
     super.dispose();
   }
@@ -133,7 +173,38 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!_isSaved)
+            if (_isRegenerating)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF006E51), strokeWidth: 2)),
+                    SizedBox(width: 12),
+                    Text('Updating your plan...',
+                        style: TextStyle(color: Color(0xFF006E51))),
+                  ],
+                ),
+              )
+            else if (_isSaved)
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle,
+                      color: Color(0xFF006E51), size: 20),
+                  SizedBox(width: 8),
+                  Text('Trip saved',
+                      style: TextStyle(
+                          color: Color(0xFF006E51),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16)),
+                ],
+              )
+            else ...[
               GestureDetector(
                 onTap: _isSaving ? null : _savePlan,
                 child: Container(
@@ -175,52 +246,49 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                           ),
                   ),
                 ),
-              )
-            else
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.check_circle, color: Color(0xFF006E51), size: 20),
-                  SizedBox(width: 8),
-                  Text('Trip saved',
-                      style: TextStyle(
-                          color: Color(0xFF006E51),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16)),
-                ],
               ),
-            const SizedBox(height: 10),
-            if (!_isSaved)
-              Container(
-                width: double.infinity,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF006E51).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: const Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.edit_outlined,
-                          color: Color(0xFF006E51), size: 18),
-                      SizedBox(width: 8),
-                      Text('Edit Plan',
-                          style: TextStyle(
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: _selectedSlots.isEmpty ? null : _showReviewSheet,
+                child: Container(
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: _selectedSlots.isEmpty
+                        ? const Color(0xFF006E51).withOpacity(0.08)
+                        : const Color(0xFF006E51).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.edit_outlined,
+                            color: Color(0xFF006E51), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          _selectedSlots.isEmpty
+                              ? 'Edit Plan'
+                              : 'Update (${_selectedSlots.length})',
+                          style: const TextStyle(
                               color: Color(0xFF006E51),
                               fontSize: 15,
-                              fontWeight: FontWeight.w500)),
-                    ],
+                              fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight: _calculateExpandedHeight(title, summary, totalCost),
+            expandedHeight:
+                _calculateExpandedHeight(title, summary, totalCost),
             pinned: true,
             backgroundColor: const Color(0xFF006E51),
             foregroundColor: Colors.white,
@@ -257,10 +325,10 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFE381).withOpacity(0.3),
+                              color:
+                                  const Color(0xFFFFE381).withOpacity(0.3),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            // ✅ الإصلاح: أضفنا maxLines و overflow لمنع الـ overflow
                             child: Text(
                               'Est. ${totalCost['amount']} ${totalCost['currency']}  •  ${totalCost['note'] ?? ''}',
                               style: const TextStyle(
@@ -293,8 +361,9 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         ],
         body: TabBarView(
           controller: _tabController,
-          children:
-              days.map((d) => _buildDayTab(d as Map<String, dynamic>)).toList(),
+          children: days
+              .map((d) => _buildDayTab(d as Map<String, dynamic>))
+              .toList(),
         ),
       ),
     );
@@ -316,6 +385,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final slots = day['slots'] as List? ?? [];
     final theme = day['theme'] as String? ?? '';
     final date = day['date'] as String? ?? '';
+    final dayNumber = day['dayNumber'] as int? ?? 0;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -339,8 +409,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             fontSize: 16,
                             color: Color(0xFF006E51))),
                     Text(date,
-                        style:
-                            TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
@@ -348,12 +418,15 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           ),
         ),
         const SizedBox(height: 16),
-        ...slots.map((s) => _buildSlotCard(s as Map<String, dynamic>)).toList(),
+        ...slots
+            .map((s) =>
+                _buildSlotCard(s as Map<String, dynamic>, dayNumber))
+            .toList(),
       ],
     );
   }
 
-  Widget _buildSlotCard(Map<String, dynamic> slot) {
+  Widget _buildSlotCard(Map<String, dynamic> slot, int dayNumber) {
     final type = slot['type'] as String? ?? 'activity';
     final period = slot['period'] as String? ?? '';
     final name = slot['name'] as String? ?? '';
@@ -366,12 +439,18 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final color = _slotColor(type);
     final icon = _slotIcon(type);
     final periodIcon = _periodIcon(period);
+    final isSelected = _selectedSlots.any(
+        (s) => s['dayNumber'] == dayNumber && s['period'] == period);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(
+            color: isSelected
+                ? const Color(0xFFA384DA)
+                : color.withOpacity(0.3),
+            width: isSelected ? 2 : 1),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
@@ -384,11 +463,12 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16))),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16))),
             child: Row(
               children: [
                 Icon(periodIcon, size: 16, color: color),
@@ -402,6 +482,30 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                 Icon(icon, size: 16, color: color),
                 const SizedBox(width: 4),
                 Text(type, style: TextStyle(fontSize: 12, color: color)),
+                if (!_isSaved) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _toggleSlot(dayNumber, period, name),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFFA384DA).withOpacity(0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isSelected
+                            ? Icons.check_circle
+                            : Icons.edit_outlined,
+                        size: 16,
+                        color: isSelected
+                            ? const Color(0xFFA384DA)
+                            : color,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -417,7 +521,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         color: Colors.black87)),
                 const SizedBox(height: 6),
                 Text(description,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                    style:
+                        TextStyle(fontSize: 14, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 12),
                   Row(children: [
@@ -425,19 +530,22 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         size: 16, color: Color(0xFF006E51)),
                     const SizedBox(width: 4),
                     Expanded(
-                        child: Text('${location['name']}, ${location['area']}',
+                        child: Text(
+                            '${location['name']}, ${location['area']}',
                             style: const TextStyle(
-                                fontSize: 13, color: Color(0xFF006E51)))),
+                                fontSize: 13,
+                                color: Color(0xFF006E51)))),
                   ]),
                 ],
                 const SizedBox(height: 8),
                 Row(children: [
                   if (duration.isNotEmpty) ...[
-                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                    const Icon(Icons.access_time,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(duration,
-                        style:
-                            const TextStyle(fontSize: 13, color: Colors.grey)),
+                        style: const TextStyle(
+                            fontSize: 13, color: Colors.grey)),
                     const SizedBox(width: 16),
                   ],
                   if (cost != null) ...[
@@ -448,7 +556,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                       cost['amount'] == 0
                           ? 'Free'
                           : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
-                      style: const TextStyle(fontSize: 13, color: Colors.grey),
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.grey),
                     )),
                   ],
                 ]),
@@ -468,7 +577,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('• ',
-                                  style: TextStyle(color: Color(0xFFA384DA))),
+                                  style:
+                                      TextStyle(color: Color(0xFFA384DA))),
                               Expanded(
                                   child: Text(tip.toString(),
                                       style: TextStyle(

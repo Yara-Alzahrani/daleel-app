@@ -41,10 +41,11 @@ class _ActivityStepState extends State<ActivityStep> {
 
   void _toggle(String label) {
     setState(() {
-      if (_selectedActivities.contains(label))
+      if (_selectedActivities.contains(label)) {
         _selectedActivities.remove(label);
-      else
+      } else {
         _selectedActivities.add(label);
+      }
     });
   }
 

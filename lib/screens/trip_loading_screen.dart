@@ -41,9 +41,10 @@ class _TripLoadingScreenState extends State<TripLoadingScreen>
     );
 
     _messageTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted)
+      if (mounted) {
         setState(() =>
             _messageIndex = (_messageIndex + 1) % _loadingMessages.length);
+      }
     });
 
     _listenToTrip();

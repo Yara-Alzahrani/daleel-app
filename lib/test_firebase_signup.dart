@@ -14,9 +14,9 @@ class TestFirebaseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'Test Firebase Signup',
-      home: const TestFirebaseScreen(),
+      home: TestFirebaseScreen(),
     );
   }
 }

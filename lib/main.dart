@@ -13,12 +13,15 @@ import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/account_settings_screen.dart';
 import 'screens/past_plans_screen.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     print('Firebase initialized successfully');
   } catch (e) {
     print('Firebase initialization error: $e');
@@ -80,9 +83,7 @@ class DaleelApp extends StatelessWidget {
             ),
           ),
         ),
-        // Start with splash screen
         home: const SplashScreen(),
-        // Define named routes
         routes: {
           '/welcome': (context) => const WelcomeScreen(),
           '/login': (context) => const LoginScreen(),

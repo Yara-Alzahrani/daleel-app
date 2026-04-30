@@ -75,15 +75,17 @@ class _GeneralInfoStepState extends State<GeneralInfoStep> {
   void _incrementChildren() =>
       setState(() => widget.preferences.numberOfChildren++);
   void _decrementChildren() {
-    if (widget.preferences.numberOfChildren > 0)
+    if (widget.preferences.numberOfChildren > 0) {
       setState(() => widget.preferences.numberOfChildren--);
+    }
   }
 
   void _incrementParents() =>
       setState(() => widget.preferences.numberOfParents++);
   void _decrementParents() {
-    if (widget.preferences.numberOfParents > 1)
+    if (widget.preferences.numberOfParents > 1) {
       setState(() => widget.preferences.numberOfParents--);
+    }
   }
 
   void _handleContinue() {

@@ -48,10 +48,11 @@ class _RestaurantStepState extends State<RestaurantStep> {
 
   void _toggle(String label) {
     setState(() {
-      if (_selectedRestaurants.contains(label))
+      if (_selectedRestaurants.contains(label)) {
         _selectedRestaurants.remove(label);
-      else
+      } else {
         _selectedRestaurants.add(label);
+      }
     });
   }
 
