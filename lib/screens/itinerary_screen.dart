@@ -25,6 +25,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   bool _isRegenerating = false;
 
   final List<Map<String, dynamic>> _selectedSlots = [];
+  final List<Map<String, dynamic>> _selectedForDelete = [];
   StreamSubscription<DocumentSnapshot>? _tripSubscription;
 
   @override
@@ -56,6 +57,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         _isLoading = false;
         _isRegenerating = false;
         _selectedSlots.clear();
+        _selectedForDelete.clear();
         _tabController = TabController(length: days.length, vsync: this);
       });
     }, onError: (e) {
@@ -74,7 +76,25 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         _selectedSlots.removeWhere(
             (s) => s['dayNumber'] == dayNumber && s['period'] == period);
       } else {
+        _selectedForDelete.removeWhere(
+            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
         _selectedSlots
+            .add({'dayNumber': dayNumber, 'period': period, 'name': name});
+      }
+    });
+  }
+
+  void _toggleDelete(int dayNumber, String period, String name) {
+    setState(() {
+      final exists = _selectedForDelete.any(
+          (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      if (exists) {
+        _selectedForDelete.removeWhere(
+            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      } else {
+        _selectedSlots.removeWhere(
+            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+        _selectedForDelete
             .add({'dayNumber': dayNumber, 'period': period, 'name': name});
       }
     });
@@ -88,6 +108,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => ReviewChangesSheet(
         selectedSlots: List.from(_selectedSlots),
+        selectedForDelete: List.from(_selectedForDelete),
         onConfirm: _onConfirmRegenerate,
       ),
     );
@@ -95,17 +116,47 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
   Future<void> _onConfirmRegenerate() async {
     setState(() => _isRegenerating = true);
-    try {
-      await http.post(
-        Uri.parse(AppConfig.n8nRegenerateUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'tripId': widget.tripId,
-          'slotsToSwap': _selectedSlots,
-        }),
-      );
-    } catch (_) {
-      // non-fatal — stream updates UI when Firestore changes
+
+    // حذف الـ slots مباشرة في Flutter
+    if (_selectedForDelete.isNotEmpty) {
+      final updatedDays = (_itinerary!['days'] as List).map((d) {
+        final day = Map<String, dynamic>.from(d as Map<String, dynamic>);
+        final dayNumber = day['dayNumber'] as int;
+        final slots = (day['slots'] as List).where((s) {
+          final slot = s as Map<String, dynamic>;
+          return !_selectedForDelete.any((del) =>
+              del['dayNumber'] == dayNumber &&
+              del['period'] == slot['period']);
+        }).toList();
+        day['slots'] = slots;
+        return day;
+      }).toList();
+
+      _itinerary!['days'] = updatedDays;
+
+      await FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .update({
+        'itinerary': jsonEncode(_itinerary),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // سواب عبر n8n
+    if (_selectedSlots.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse(AppConfig.n8nRegenerateUrl),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'tripId': widget.tripId,
+            'slotsToSwap': _selectedSlots,
+          }),
+        );
+      } catch (_) {}
+    } else {
+      setState(() => _isRegenerating = false);
     }
   }
 
@@ -249,12 +300,14 @@ class _ItineraryScreenState extends State<ItineraryScreen>
               ),
               const SizedBox(height: 10),
               GestureDetector(
-                onTap: _selectedSlots.isEmpty ? null : _showReviewSheet,
+                onTap: (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
+                    ? null
+                    : _showReviewSheet,
                 child: Container(
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: _selectedSlots.isEmpty
+                    color: (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
                         ? const Color(0xFF006E51).withOpacity(0.08)
                         : const Color(0xFF006E51).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(25),
@@ -267,9 +320,9 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             color: Color(0xFF006E51), size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          _selectedSlots.isEmpty
+                          (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
                               ? 'Edit Plan'
-                              : 'Update (${_selectedSlots.length})',
+                              : 'Update (${_selectedSlots.length + _selectedForDelete.length})',
                           style: const TextStyle(
                               color: Color(0xFF006E51),
                               fontSize: 15,
@@ -441,16 +494,20 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final periodIcon = _periodIcon(period);
     final isSelected = _selectedSlots.any(
         (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+    final isDeleteSelected = _selectedForDelete.any(
+        (s) => s['dayNumber'] == dayNumber && s['period'] == period);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: isSelected
-                ? const Color(0xFFA384DA)
-                : color.withOpacity(0.3),
-            width: isSelected ? 2 : 1),
+            color: isDeleteSelected
+                ? Colors.red.withOpacity(0.5)
+                : isSelected
+                    ? const Color(0xFFA384DA)
+                    : color.withOpacity(0.3),
+            width: (isSelected || isDeleteSelected) ? 2 : 1),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
@@ -466,7 +523,9 @@ class _ItineraryScreenState extends State<ItineraryScreen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: isDeleteSelected
+                    ? Colors.red.withOpacity(0.08)
+                    : color.withOpacity(0.1),
                 borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(16))),
             child: Row(
@@ -502,6 +561,26 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         color: isSelected
                             ? const Color(0xFFA384DA)
                             : color,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _toggleDelete(dayNumber, period, name),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: isDeleteSelected
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isDeleteSelected
+                            ? Icons.delete
+                            : Icons.delete_outline,
+                        size: 16,
+                        color: isDeleteSelected ? Colors.red : Colors.grey,
                       ),
                     ),
                   ),
