@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
-import 'screens/splash_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/create_plan_screen.dart';
 import 'screens/trip_loading_screen.dart';
 import 'screens/itinerary_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/account_settings_screen.dart';
 import 'screens/past_plans_screen.dart';
@@ -83,13 +82,13 @@ class DaleelApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const SplashScreen(),
+        home: const MainScreen(),
         routes: {
           '/welcome': (context) => const WelcomeScreen(),
           '/login': (context) => const LoginScreen(),
           '/signup': (context) => const SignUpScreen(),
           '/create-plan': (context) => const CreatePlanScreen(),
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => const MainScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/account-settings': (context) => const AccountSettingsScreen(),
           '/past-plans': (context) => const PastPlansScreen(),

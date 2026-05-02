@@ -5,28 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 class PastPlansScreen extends StatelessWidget {
   const PastPlansScreen({Key? key}) : super(key: key);
 
-  bool _isTripPast(Map<String, dynamic> prefs) {
-    final dateRange = prefs['dateRange'] as Map<String, dynamic>? ?? {};
-    final endDateStr = dateRange['endDate'] as String? ?? '';
-    if (endDateStr.isEmpty) return false;
-    try {
-      DateTime endDate;
-      if (endDateStr.contains('/')) {
-        final parts = endDateStr.split('/');
-        endDate = DateTime(
-            int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
-      } else {
-        endDate = DateTime.parse(endDateStr);
-      }
-      // ✅ مقارنة بالتاريخ فقط بدون الوقت
-      final today = DateTime(
-          DateTime.now().year, DateTime.now().month, DateTime.now().day);
-      return endDate.isBefore(today);
-    } catch (_) {
-      return false;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -46,10 +24,7 @@ class PastPlansScreen extends StatelessWidget {
             ),
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,6 +54,7 @@ class PastPlansScreen extends StatelessWidget {
               stream: FirebaseFirestore.instance
                   .collection('trips')
                   .where('userId', isEqualTo: user.uid)
+                  .where('saved', isEqualTo: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -92,13 +68,7 @@ class PastPlansScreen extends StatelessWidget {
                           style: const TextStyle(color: Colors.red)));
                 }
 
-                final allTrips = snapshot.data?.docs ?? [];
-                final pastTrips = allTrips.where((doc) {
-                  final trip = doc.data() as Map<String, dynamic>;
-                  final prefs =
-                      trip['preferences'] as Map<String, dynamic>? ?? {};
-                  return _isTripPast(prefs);
-                }).toList();
+                final pastTrips = snapshot.data?.docs ?? [];
 
                 if (pastTrips.isEmpty) return _buildEmptyState();
 

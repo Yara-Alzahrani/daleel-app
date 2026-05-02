@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import '../services/app_config.dart';
 import '../widgets/review_changes_sheet.dart';
+import 'day_map_screen.dart';
 
 class ItineraryScreen extends StatefulWidget {
   final String tripId;
@@ -43,13 +44,26 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       if (!snapshot.exists || !mounted) return;
       final data = snapshot.data()!;
       final itineraryRaw = data['itinerary'];
-      if (itineraryRaw == null) return;
+
+      if (itineraryRaw == null) {
+        setState(() {
+          _isRegenerating = false;
+          _isLoading = false;
+          _error = 'Itinerary not generated yet. Please wait or try again.';
+        });
+        return;
+      }
 
       final itinerary = itineraryRaw is String
           ? jsonDecode(itineraryRaw) as Map<String, dynamic>
           : itineraryRaw as Map<String, dynamic>;
 
       final days = itinerary['days'] as List? ?? [];
+      final newLength = days.length;
+      // capture before setState mutates _isLoading
+      final wasLoading = _isLoading;
+      final wasRegenerating = _isRegenerating;
+      final lengthChanged = !wasLoading && newLength != _tabController.length;
 
       setState(() {
         _itinerary = itinerary;
@@ -58,8 +72,29 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         _isRegenerating = false;
         _selectedSlots.clear();
         _selectedForDelete.clear();
-        _tabController = TabController(length: days.length, vsync: this);
+        if (wasLoading || lengthChanged) {
+          if (!wasLoading) _tabController.dispose();
+          _tabController = TabController(length: newLength, vsync: this);
+        }
       });
+
+      if (wasRegenerating && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Your plan has been updated!',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+            ]),
+            backgroundColor: const Color(0xFF006E51),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }, onError: (e) {
       setState(() {
         _error = 'Failed to load itinerary: $e';
@@ -155,8 +190,67 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           }),
         );
       } catch (_) {}
+      // fallback: if stream hasn't fired after 20s, fetch manually
+      Future.delayed(const Duration(seconds: 20), () async {
+        if (!mounted || !_isRegenerating) return;
+        await _fetchAndRefresh();
+      });
     } else {
       setState(() => _isRegenerating = false);
+    }
+  }
+
+  Future<void> _fetchAndRefresh() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('trips')
+          .doc(widget.tripId)
+          .get();
+      if (!snap.exists || !mounted) return;
+      final data = snap.data()!;
+      final itineraryRaw = data['itinerary'];
+      if (itineraryRaw == null) {
+        setState(() => _isRegenerating = false);
+        return;
+      }
+      final itinerary = itineraryRaw is String
+          ? jsonDecode(itineraryRaw) as Map<String, dynamic>
+          : itineraryRaw as Map<String, dynamic>;
+      final days = itinerary['days'] as List? ?? [];
+      final wasLoading = _isLoading;
+      final newLength = days.length;
+      final lengthChanged = !wasLoading && newLength != _tabController.length;
+      setState(() {
+        _itinerary = itinerary;
+        _isSaved = data['saved'] == true;
+        _isLoading = false;
+        _isRegenerating = false;
+        _selectedSlots.clear();
+        _selectedForDelete.clear();
+        if (wasLoading || lengthChanged) {
+          if (!wasLoading) _tabController.dispose();
+          _tabController = TabController(length: newLength, vsync: this);
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Your plan has been updated!',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+            ]),
+            backgroundColor: const Color(0xFF006E51),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isRegenerating = false);
     }
   }
 
@@ -171,7 +265,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       if (!mounted) return;
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return;
-      Navigator.of(context).pop();
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil('/home', (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -465,6 +560,42 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         style: TextStyle(
                             fontSize: 12, color: Colors.grey[600])),
                   ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DayMapScreen(
+                      dayNumber: dayNumber,
+                      dayTheme: theme,
+                      date: date,
+                      slots: slots
+                          .map((s) => s as Map<String, dynamic>)
+                          .toList(),
+                    ),
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF006E51),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.map_outlined,
+                          color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text('Map',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
             ],

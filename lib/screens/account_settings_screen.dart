@@ -41,11 +41,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     setState(() => _isLoading = true);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'name': _nameController.text.trim(),
       'phone': _phoneController.text.trim(),
       'email': _emailController.text.trim(),
-    });
+    }, SetOptions(merge: true));
     setState(() {
       _isLoading = false;
       _isEditing = false;

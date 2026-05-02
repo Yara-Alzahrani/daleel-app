@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'day_map_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -41,10 +42,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.person_outline),
-          onPressed: () => Navigator.of(context).pushNamed('/profile'),
-        ),
+        automaticallyImplyLeading: false,
         actions: [
           ClipOval(
             child: Image.asset(
@@ -111,11 +109,18 @@ class HomeScreen extends StatelessWidget {
                   return _buildEmptyState(context);
                 }
 
-                // ✅ فلتر الرحلات الحالية فقط
                 final trips = snapshot.data!.docs.where((doc) {
                   final trip = doc.data() as Map<String, dynamic>;
                   return _isTripCurrent(trip);
-                }).toList();
+                }).toList()
+                  ..sort((a, b) {
+                    final aTime = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                    final bTime = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+                    if (aTime == null && bTime == null) return 0;
+                    if (aTime == null) return 1;
+                    if (bTime == null) return -1;
+                    return bTime.compareTo(aTime);
+                  });
 
                 if (trips.isEmpty) return _buildEmptyState(context);
 
@@ -240,6 +245,19 @@ class HomeScreen extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w600)),
                 ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _confirmDelete(context, tripId),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.delete_outline,
+                        color: Colors.red, size: 18),
+                  ),
+                ),
               ],
             ),
           ),
@@ -285,6 +303,37 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, String tripId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Trip',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to delete this trip?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await FirebaseFirestore.instance
+                  .collection('trips')
+                  .doc(tripId)
+                  .delete();
+            },
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Colors.red, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -395,6 +444,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _itinerary;
   bool _isLoading = true;
+  String _status = '';
   TabController? _tabController;
 
   @override
@@ -411,6 +461,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
           .get();
       final data = doc.data() ?? {};
       final itineraryRaw = data['itinerary'];
+      final status = data['status'] as String? ?? '';
       if (itineraryRaw != null) {
         final itinerary = itineraryRaw is String
             ? jsonDecode(itineraryRaw) as Map<String, dynamic>
@@ -418,11 +469,15 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
         final days = itinerary['days'] as List? ?? [];
         setState(() {
           _itinerary = itinerary;
+          _status = status;
           _tabController = TabController(length: days.length, vsync: this);
           _isLoading = false;
         });
       } else {
-        setState(() => _isLoading = false);
+        setState(() {
+          _status = status;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -491,8 +546,62 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                         child: CircularProgressIndicator(
                             color: Color(0xFF006E51))))
               else if (_itinerary == null)
-                const Expanded(
-                    child: Center(child: Text('No itinerary available yet')))
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _status == 'pending'
+                                ? Icons.hourglass_top_rounded
+                                : Icons.map_outlined,
+                            size: 56,
+                            color: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _status == 'pending'
+                                ? 'Your plan is being generated...'
+                                : 'Itinerary not available',
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 24),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).pushNamed('/itinerary',
+                                  arguments: widget.tripId);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF006E51),
+                                    Color(0xFFA384DA)
+                                  ],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              child: const Text('Open Full Plan',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
               else ...[
                 Container(
                   color: Colors.white,
@@ -514,8 +623,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                   child: TabBarView(
                     controller: _tabController,
                     children: (_itinerary!['days'] as List).map((d) {
-                      return _buildDayTab(
-                          d as Map<String, dynamic>, scrollController);
+                      final day = d as Map<String, dynamic>;
+                      return _buildDayTab(day, scrollController);
                     }).toList(),
                   ),
                 ),
@@ -532,6 +641,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
     final slots = day['slots'] as List? ?? [];
     final theme = day['theme'] as String? ?? '';
     final date = day['date'] as String? ?? '';
+    final dayNumber = day['dayNumber'] as int? ?? 0;
 
     return ListView(
       controller: scrollController,
@@ -560,6 +670,42 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                         style:
                             TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DayMapScreen(
+                      dayNumber: dayNumber,
+                      dayTheme: theme,
+                      date: date,
+                      slots: slots
+                          .map((s) => s as Map<String, dynamic>)
+                          .toList(),
+                    ),
+                  ),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF006E51),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.map_outlined,
+                          color: Colors.white, size: 14),
+                      SizedBox(width: 4),
+                      Text('Map',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 ),
               ),
             ],

@@ -44,7 +44,10 @@ class ProfileScreen extends StatelessWidget {
                   .doc(FirebaseAuth.instance.currentUser?.uid)
                   .snapshots(),
               builder: (context, snapshot) {
-                final name = snapshot.data?['name'] as String? ?? 'User';
+                final doc = snapshot.data;
+                final name = (doc != null && doc.exists)
+                    ? (doc['name'] as String? ?? 'User')
+                    : 'User';
                 return Text(name,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
