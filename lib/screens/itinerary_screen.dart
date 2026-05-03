@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
-import '../services/app_config.dart';
 import '../widgets/review_changes_sheet.dart';
 import 'day_map_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ItineraryScreen extends StatefulWidget {
   final String tripId;
@@ -18,12 +17,15 @@ class ItineraryScreen extends StatefulWidget {
 class _ItineraryScreenState extends State<ItineraryScreen>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? _itinerary;
+  String? _tripCity;
   bool _isLoading = true;
   String? _error;
-  late TabController _tabController;
+  TabController? _tabController;
   bool _isSaved = false;
   bool _isSaving = false;
   bool _isRegenerating = false;
+  bool _isEditMode = false;
+  int _itineraryVersion = 0;
 
   final List<Map<String, dynamic>> _selectedSlots = [];
   final List<Map<String, dynamic>> _selectedForDelete = [];
@@ -46,34 +48,51 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       final itineraryRaw = data['itinerary'];
 
       if (itineraryRaw == null) {
+        if (_isRegenerating) return;
         setState(() {
-          _isRegenerating = false;
           _isLoading = false;
           _error = 'Itinerary not generated yet. Please wait or try again.';
         });
         return;
       }
 
-      final itinerary = itineraryRaw is String
-          ? jsonDecode(itineraryRaw) as Map<String, dynamic>
-          : itineraryRaw as Map<String, dynamic>;
+      Map<String, dynamic> itinerary;
+      try {
+        itinerary = itineraryRaw is String
+            ? Map<String, dynamic>.from(jsonDecode(itineraryRaw) as Map)
+            : Map<String, dynamic>.from(itineraryRaw as Map);
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to parse itinerary: $e';
+        });
+        return;
+      }
+
+      final city = data['city'] as String?
+          ?? (data['preferences'] as Map?)?['city'] as String?
+          ?? itinerary['city'] as String?
+          ?? '';
 
       final days = itinerary['days'] as List? ?? [];
       final newLength = days.length;
-      // capture before setState mutates _isLoading
-      final wasLoading = _isLoading;
       final wasRegenerating = _isRegenerating;
-      final lengthChanged = !wasLoading && newLength != _tabController.length;
+      final lengthChanged =
+          _tabController == null || newLength != _tabController!.length;
 
       setState(() {
         _itinerary = itinerary;
+        _tripCity = city;
         _isSaved = data['saved'] == true;
         _isLoading = false;
         _isRegenerating = false;
+        _isEditMode = false;
+        _error = null;
         _selectedSlots.clear();
         _selectedForDelete.clear();
-        if (wasLoading || lengthChanged) {
-          if (!wasLoading) _tabController.dispose();
+        _itineraryVersion++;
+        if (lengthChanged) {
+          _tabController?.dispose();
           _tabController = TabController(length: newLength, vsync: this);
         }
       });
@@ -89,8 +108,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
             ]),
             backgroundColor: const Color(0xFF006E51),
             behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -103,34 +122,34 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     });
   }
 
-  void _toggleSlot(int dayNumber, String period, String name) {
+  void _toggleSlot(int dayNumber, String period, String name, String timeRange) {
     setState(() {
-      final exists = _selectedSlots.any(
-          (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      final exists = _selectedSlots.any((s) =>
+          s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
       if (exists) {
-        _selectedSlots.removeWhere(
-            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+        _selectedSlots.removeWhere((s) =>
+            s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
       } else {
-        _selectedForDelete.removeWhere(
-            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
-        _selectedSlots
-            .add({'dayNumber': dayNumber, 'period': period, 'name': name});
+        _selectedForDelete.removeWhere((s) =>
+            s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
+        _selectedSlots.add(
+            {'dayNumber': dayNumber, 'period': period, 'timeRange': timeRange, 'name': name});
       }
     });
   }
 
-  void _toggleDelete(int dayNumber, String period, String name) {
+  void _toggleDelete(int dayNumber, String period, String name, String timeRange) {
     setState(() {
-      final exists = _selectedForDelete.any(
-          (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+      final exists = _selectedForDelete.any((s) =>
+          s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
       if (exists) {
-        _selectedForDelete.removeWhere(
-            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+        _selectedForDelete.removeWhere((s) =>
+            s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
       } else {
-        _selectedSlots.removeWhere(
-            (s) => s['dayNumber'] == dayNumber && s['period'] == period);
-        _selectedForDelete
-            .add({'dayNumber': dayNumber, 'period': period, 'name': name});
+        _selectedSlots.removeWhere((s) =>
+            s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
+        _selectedForDelete.add(
+            {'dayNumber': dayNumber, 'period': period, 'timeRange': timeRange, 'name': name});
       }
     });
   }
@@ -149,108 +168,184 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     );
   }
 
+  String? _venueField(Map<String, dynamic> data, String key) {
+    if (data.containsKey(key)) {
+      final val = data[key];
+      return val != null ? val.toString() : null;
+    }
+    final lower = key.toLowerCase();
+    for (final k in data.keys) {
+      if (k.toLowerCase() == lower) {
+        final val = data[k];
+        return val != null ? val.toString() : null;
+      }
+    }
+    return null;
+  }
+
+  Map<String, dynamic> _deepCopy(Map<String, dynamic> map) {
+    return Map<String, dynamic>.from(jsonDecode(jsonEncode(map)) as Map);
+  }
+
+  String _normalizeType(String type) {
+    switch (type.toLowerCase().trim()) {
+      case 'meal':
+      case 'food':
+      case 'dining':
+        return 'restaurant';
+      default:
+        return type.toLowerCase().trim();
+    }
+  }
+
   Future<void> _onConfirmRegenerate() async {
     setState(() => _isRegenerating = true);
+    await _tripSubscription?.cancel();
+    _tripSubscription = null;
 
-    // حذف الـ slots مباشرة في Flutter
-    if (_selectedForDelete.isNotEmpty) {
-      final updatedDays = (_itinerary!['days'] as List).map((d) {
-        final day = Map<String, dynamic>.from(d as Map<String, dynamic>);
-        final dayNumber = day['dayNumber'] as int;
-        final slots = (day['slots'] as List).where((s) {
+    try {
+      final city = _tripCity ?? '';
+      final itineraryCopy = _deepCopy(_itinerary!);
+
+      final updatedDays = (itineraryCopy['days'] as List)
+          .map((d) => Map<String, dynamic>.from(d as Map))
+          .toList();
+
+      final usedNames = updatedDays
+          .expand((d) => (d['slots'] as List? ?? []))
+          .map((s) =>
+              ((s as Map<String, dynamic>)['name'] as String? ?? '')
+                  .toLowerCase())
+          .toSet();
+
+      // --- حذف ---
+      for (final selected in _selectedForDelete) {
+        final dayNumber = selected['dayNumber'] as int;
+        final period = selected['period'] as String;
+        final day = updatedDays.firstWhere(
+            (d) => d['dayNumber'] == dayNumber,
+            orElse: () => {});
+        if (day.isEmpty) continue;
+        final delTimeRange = selected['timeRange'] as String? ?? '';
+        (day['slots'] as List).removeWhere((s) {
           final slot = s as Map<String, dynamic>;
-          return !_selectedForDelete.any((del) =>
-              del['dayNumber'] == dayNumber &&
-              del['period'] == slot['period']);
-        }).toList();
-        day['slots'] = slots;
-        return day;
-      }).toList();
+          return slot['period'] == period &&
+              (delTimeRange.isEmpty || slot['timeRange'] == delTimeRange);
+        });
+      }
 
-      _itinerary!['days'] = updatedDays;
+      // --- تبديل ---
+      for (final selected in _selectedSlots) {
+        final dayNumber = selected['dayNumber'] as int;
+        final period = selected['period'] as String;
+
+        final day = updatedDays.firstWhere(
+            (d) => d['dayNumber'] == dayNumber,
+            orElse: () => {});
+        if (day.isEmpty) continue;
+
+        final slots = day['slots'] as List;
+        final timeRange = selected['timeRange'] as String? ?? '';
+        final slotIndex = slots.indexWhere((s) {
+          final slot = s as Map<String, dynamic>;
+          return slot['period'] == period &&
+              (timeRange.isEmpty || slot['timeRange'] == timeRange);
+        });
+        if (slotIndex == -1) continue;
+
+        final currentSlot =
+            Map<String, dynamic>.from(slots[slotIndex] as Map);
+        final type = _normalizeType(
+            currentSlot['type'] as String? ?? 'activity');
+
+        // جيب كل venues بدون limit
+        final venuesSnap = await FirebaseFirestore.instance
+            .collection('venues')
+            .get();
+
+        final alternatives = venuesSnap.docs.where((d) {
+          final data = d.data();
+          final venueCity =
+              (_venueField(data, 'city') ?? '').toLowerCase().trim();
+          final venueType =
+              (_venueField(data, 'venueType') ?? '').toLowerCase().trim();
+          final venueName =
+              (_venueField(data, 'name') ?? '').toLowerCase().trim();
+          return venueCity == city.toLowerCase().trim() &&
+              venueType == type &&
+              !usedNames.contains(venueName);
+        }).toList();
+
+        if (alternatives.isEmpty) continue;
+
+        alternatives.shuffle();
+        final newVenue = alternatives.first.data();
+        final newName = _venueField(newVenue, 'name') ??
+            (currentSlot['name'] as String? ?? '');
+        final newDesc = _venueField(newVenue, 'description') ??
+            (currentSlot['description'] as String? ?? '');
+        final newMaps =
+            _venueField(newVenue, 'mapsLink') ?? '$newName, $city';
+
+        slots[slotIndex] = {
+          ...currentSlot,
+          'name': newName,
+          'description': newDesc,
+          'location': {
+            'name': newName,
+            'area': city,
+            'mapsQuery': newMaps,
+          },
+          'tips': [],
+        };
+
+        usedNames.add(newName.toLowerCase());
+      }
+
+      itineraryCopy['days'] = updatedDays;
 
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({
-        'itinerary': jsonEncode(_itinerary),
+        'itinerary': jsonEncode(itineraryCopy),
         'updatedAt': FieldValue.serverTimestamp(),
       });
-    }
 
-    // سواب عبر n8n
-    if (_selectedSlots.isNotEmpty) {
-      try {
-        await http.post(
-          Uri.parse(AppConfig.n8nRegenerateUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'tripId': widget.tripId,
-            'slotsToSwap': _selectedSlots,
-          }),
-        );
-      } catch (_) {}
-      // fallback: if stream hasn't fired after 20s, fetch manually
-      Future.delayed(const Duration(seconds: 20), () async {
-        if (!mounted || !_isRegenerating) return;
-        await _fetchAndRefresh();
-      });
-    } else {
-      setState(() => _isRegenerating = false);
-    }
-  }
-
-  Future<void> _fetchAndRefresh() async {
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('trips')
-          .doc(widget.tripId)
-          .get();
-      if (!snap.exists || !mounted) return;
-      final data = snap.data()!;
-      final itineraryRaw = data['itinerary'];
-      if (itineraryRaw == null) {
-        setState(() => _isRegenerating = false);
-        return;
-      }
-      final itinerary = itineraryRaw is String
-          ? jsonDecode(itineraryRaw) as Map<String, dynamic>
-          : itineraryRaw as Map<String, dynamic>;
-      final days = itinerary['days'] as List? ?? [];
-      final wasLoading = _isLoading;
-      final newLength = days.length;
-      final lengthChanged = !wasLoading && newLength != _tabController.length;
+      if (!mounted) return;
       setState(() {
-        _itinerary = itinerary;
-        _isSaved = data['saved'] == true;
-        _isLoading = false;
         _isRegenerating = false;
+        _isEditMode = false;
         _selectedSlots.clear();
         _selectedForDelete.clear();
-        if (wasLoading || lengthChanged) {
-          if (!wasLoading) _tabController.dispose();
-          _tabController = TabController(length: newLength, vsync: this);
-        }
+        _itineraryVersion++;
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 18),
-              SizedBox(width: 8),
-              Text('Your plan has been updated!',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
-            ]),
-            backgroundColor: const Color(0xFF006E51),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) setState(() => _isRegenerating = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(children: [
+            Icon(Icons.check_circle, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text('Your plan has been updated!',
+                style: TextStyle(fontWeight: FontWeight.w500)),
+          ]),
+          backgroundColor: const Color(0xFF006E51),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isRegenerating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Failed to update: $e'),
+            backgroundColor: Colors.red),
+      );
+    } finally {
+      _listenToTrip();
     }
   }
 
@@ -282,7 +377,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   @override
   void dispose() {
     _tripSubscription?.cancel();
-    if (!_isLoading && _error == null) _tabController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -294,7 +389,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
               child: CircularProgressIndicator(color: Color(0xFF006E51))));
     }
 
-    if (_error != null) {
+    if (_error != null && _itinerary == null) {
       return Scaffold(
         appBar: AppBar(
             backgroundColor: const Color(0xFF006E51),
@@ -303,6 +398,12 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         body: Center(
             child: Text(_error!, style: const TextStyle(color: Colors.red))),
       );
+    }
+
+    if (_tabController == null) {
+      return const Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF006E51))));
     }
 
     final days = _itinerary!['days'] as List;
@@ -340,8 +441,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle,
-                      color: Color(0xFF006E51), size: 20),
+                  Icon(Icons.check_circle, color: Color(0xFF006E51), size: 20),
                   SizedBox(width: 8),
                   Text('Trip saved',
                       style: TextStyle(
@@ -351,73 +451,97 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                 ],
               )
             else ...[
-              GestureDetector(
-                onTap: _isSaving ? null : _savePlan,
-                child: Container(
-                  width: double.infinity,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF006E51), Color(0xFFA384DA)],
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
+              // زر Start This Trip — يختفي في وضع التعديل
+              if (!_isEditMode) ...[
+                GestureDetector(
+                  onTap: _isSaving ? null : _savePlan,
+                  child: Container(
+                    width: double.infinity,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                            color: const Color(0xFF006E51).withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                          color: const Color(0xFF006E51).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: Center(
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
-                        : const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.rocket_launch_outlined,
-                                  color: Colors.white, size: 20),
-                              SizedBox(width: 8),
-                              Text('Start This Trip',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
+                    child: Center(
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.rocket_launch_outlined,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text('Start This Trip',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 10),
+              ],
+              // زر Edit Plan / Update / Cancel
               GestureDetector(
-                onTap: (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
-                    ? null
-                    : _showReviewSheet,
+                onTap: () {
+                  if (!_isEditMode) {
+                    setState(() => _isEditMode = true);
+                  } else if (_selectedSlots.isNotEmpty ||
+                      _selectedForDelete.isNotEmpty) {
+                    _showReviewSheet();
+                  } else {
+                    setState(() => _isEditMode = false);
+                  }
+                },
                 child: Container(
                   width: double.infinity,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
-                        ? const Color(0xFF006E51).withOpacity(0.08)
-                        : const Color(0xFF006E51).withOpacity(0.15),
+                    color: (_isEditMode &&
+                            (_selectedSlots.isNotEmpty ||
+                                _selectedForDelete.isNotEmpty))
+                        ? const Color(0xFF006E51).withOpacity(0.15)
+                        : const Color(0xFF006E51).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(25),
                   ),
                   child: Center(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.edit_outlined,
-                            color: Color(0xFF006E51), size: 18),
+                        Icon(
+                          !_isEditMode
+                              ? Icons.edit_outlined
+                              : (_selectedSlots.isNotEmpty ||
+                                      _selectedForDelete.isNotEmpty)
+                                  ? Icons.check_circle_outline
+                                  : Icons.close,
+                          color: const Color(0xFF006E51),
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          (_selectedSlots.isEmpty && _selectedForDelete.isEmpty)
+                          !_isEditMode
                               ? 'Edit Plan'
-                              : 'Update (${_selectedSlots.length + _selectedForDelete.length})',
+                              : (_selectedSlots.isNotEmpty ||
+                                      _selectedForDelete.isNotEmpty)
+                                  ? 'Update (${_selectedSlots.length + _selectedForDelete.length})'
+                                  : 'Cancel',
                           style: const TextStyle(
                               color: Color(0xFF006E51),
                               fontSize: 15,
@@ -435,8 +559,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
-            expandedHeight:
-                _calculateExpandedHeight(title, summary, totalCost),
+            expandedHeight: _calculateExpandedHeight(title, summary, totalCost),
             pinned: true,
             backgroundColor: const Color(0xFF006E51),
             foregroundColor: Colors.white,
@@ -473,8 +596,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color:
-                                  const Color(0xFFFFE381).withOpacity(0.3),
+                              color: const Color(0xFFFFE381).withOpacity(0.3),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -495,7 +617,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
               ),
             ),
             bottom: TabBar(
-              controller: _tabController,
+              controller: _tabController!,
               isScrollable: true,
               indicatorColor: const Color(0xFFFFE381),
               labelColor: Colors.white,
@@ -508,7 +630,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           ),
         ],
         body: TabBarView(
-          controller: _tabController,
+          key: ValueKey(_itineraryVersion),
+          controller: _tabController!,
           children: days
               .map((d) => _buildDayTab(d as Map<String, dynamic>))
               .toList(),
@@ -557,8 +680,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             fontSize: 16,
                             color: Color(0xFF006E51))),
                     Text(date,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey[600])),
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
@@ -577,8 +700,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                   ),
                 ),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF006E51),
                     borderRadius: BorderRadius.circular(20),
@@ -586,8 +709,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.map_outlined,
-                          color: Colors.white, size: 14),
+                      Icon(Icons.map_outlined, color: Colors.white, size: 14),
                       SizedBox(width: 4),
                       Text('Map',
                           style: TextStyle(
@@ -603,8 +725,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         ),
         const SizedBox(height: 16),
         ...slots
-            .map((s) =>
-                _buildSlotCard(s as Map<String, dynamic>, dayNumber))
+            .map((s) => _buildSlotCard(s as Map<String, dynamic>, dayNumber))
             .toList(),
       ],
     );
@@ -623,10 +744,10 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final color = _slotColor(type);
     final icon = _slotIcon(type);
     final periodIcon = _periodIcon(period);
-    final isSelected = _selectedSlots.any(
-        (s) => s['dayNumber'] == dayNumber && s['period'] == period);
-    final isDeleteSelected = _selectedForDelete.any(
-        (s) => s['dayNumber'] == dayNumber && s['period'] == period);
+    final isSelected = _selectedSlots.any((s) =>
+        s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
+    final isDeleteSelected = _selectedForDelete.any((s) =>
+        s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -651,14 +772,13 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
                 color: isDeleteSelected
                     ? Colors.red.withOpacity(0.08)
                     : color.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16))),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16))),
             child: Row(
               children: [
                 Icon(periodIcon, size: 16, color: color),
@@ -672,10 +792,11 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                 Icon(icon, size: 16, color: color),
                 const SizedBox(width: 4),
                 Text(type, style: TextStyle(fontSize: 12, color: color)),
-                if (!_isSaved) ...[
+                // الأيقونات تظهر فقط في وضع التعديل
+                if (!_isSaved && _isEditMode) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _toggleSlot(dayNumber, period, name),
+                    onTap: () => _toggleSlot(dayNumber, period, name, timeRange),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -685,19 +806,15 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        isSelected
-                            ? Icons.check_circle
-                            : Icons.edit_outlined,
+                        isSelected ? Icons.check_circle : Icons.edit_outlined,
                         size: 16,
-                        color: isSelected
-                            ? const Color(0xFFA384DA)
-                            : color,
+                        color: isSelected ? const Color(0xFFA384DA) : color,
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
                   GestureDetector(
-                    onTap: () => _toggleDelete(dayNumber, period, name),
+                    onTap: () => _toggleDelete(dayNumber, period, name, timeRange),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -707,9 +824,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
-                        isDeleteSelected
-                            ? Icons.delete
-                            : Icons.delete_outline,
+                        isDeleteSelected ? Icons.delete : Icons.delete_outline,
                         size: 16,
                         color: isDeleteSelected ? Colors.red : Colors.grey,
                       ),
@@ -731,8 +846,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         color: Colors.black87)),
                 const SizedBox(height: 6),
                 Text(description,
-                    style:
-                        TextStyle(fontSize: 14, color: Colors.grey[700])),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 12),
                   Row(children: [
@@ -743,19 +857,17 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         child: Text(
                             '${location['name']}, ${location['area']}',
                             style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF006E51)))),
+                                fontSize: 13, color: Color(0xFF006E51)))),
                   ]),
                 ],
                 const SizedBox(height: 8),
                 Row(children: [
                   if (duration.isNotEmpty) ...[
-                    const Icon(Icons.access_time,
-                        size: 14, color: Colors.grey),
+                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(duration,
-                        style: const TextStyle(
-                            fontSize: 13, color: Colors.grey)),
+                        style:
+                            const TextStyle(fontSize: 13, color: Colors.grey)),
                     const SizedBox(width: 16),
                   ],
                   if (cost != null) ...[
@@ -766,8 +878,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                       cost['amount'] == 0
                           ? 'Free'
                           : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.grey),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     )),
                   ],
                 ]),
@@ -787,8 +898,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('• ',
-                                  style:
-                                      TextStyle(color: Color(0xFFA384DA))),
+                                  style: TextStyle(color: Color(0xFFA384DA))),
                               Expanded(
                                   child: Text(tip.toString(),
                                       style: TextStyle(
@@ -797,6 +907,26 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                             ]),
                       )),
                 ],
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => _showVenueDetails(name),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color: const Color(0xFF006E51).withOpacity(0.4)),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Center(
+                      child: Text('View More',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF006E51),
+                              fontWeight: FontWeight.w500)),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -805,9 +935,173 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     );
   }
 
+
+  Future<void> _showVenueDetails(String venueName) async {
+    // جيب بيانات الفعالية من Firestore
+    Map<String, dynamic>? venueData;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('venues')
+          .get();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final name = _venueField(data, 'name') ?? '';
+        if (name.toLowerCase() == venueName.toLowerCase()) {
+          venueData = data;
+          break;
+        }
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) {
+        final name = venueData != null
+            ? (_venueField(venueData, 'name') ?? venueName)
+            : venueName;
+        final description = venueData != null
+            ? (_venueField(venueData, 'description') ?? '')
+            : '';
+        final city = venueData != null
+            ? (_venueField(venueData, 'city') ?? '')
+            : '';
+        final type = venueData != null
+            ? (_venueField(venueData, 'Type') ?? _venueField(venueData, 'type') ?? '')
+            : '';
+        final mapsLink = venueData != null
+            ? (_venueField(venueData, 'mapsLink') ?? '')
+            : '';
+        final rateRaw = venueData?['Rate'] ?? venueData?['rate'];
+        final rate = rateRaw != null ? rateRaw.toString() : null;
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.55,
+          minChildSize: 0.4,
+          maxChildSize: 0.85,
+          builder: (_, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Name
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
+                const SizedBox(height: 8),
+                // Rating
+                if (rate != null)
+                  Row(children: [
+                    const Icon(Icons.star, color: Color(0xFFFFB800), size: 18),
+                    const SizedBox(width: 4),
+                    Text(rate,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87)),
+                    const SizedBox(width: 4),
+                    Text('/ 5',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                  ]),
+                if (rate != null) const SizedBox(height: 12),
+                // Type & City chips
+                Wrap(spacing: 8, children: [
+                  if (type.isNotEmpty)
+                    Chip(
+                      label: Text(type,
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF006E51))),
+                      backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
+                      padding: EdgeInsets.zero,
+                    ),
+                  if (city.isNotEmpty)
+                    Chip(
+                      label: Text(city,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey[700])),
+                      backgroundColor: Colors.grey[100],
+                      padding: EdgeInsets.zero,
+                    ),
+                ]),
+                const SizedBox(height: 16),
+                // Description
+                if (description.isNotEmpty) ...[
+                  const Text('About',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87)),
+                  const SizedBox(height: 6),
+                  Text(description,
+                      style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                          height: 1.5)),
+                  const SizedBox(height: 20),
+                ],
+                // Google Maps button
+                if (mapsLink.isNotEmpty)
+                  GestureDetector(
+                    onTap: () async {
+                      final uri = Uri.parse(mapsLink);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF006E51),
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map_outlined, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Open in Google Maps',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Color _slotColor(String type) {
     switch (type) {
       case 'restaurant':
+      case 'meal':
         return const Color(0xFFE67E22);
       case 'transport':
         return const Color(0xFF2980B9);
@@ -819,6 +1113,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   IconData _slotIcon(String type) {
     switch (type) {
       case 'restaurant':
+      case 'meal':
         return Icons.restaurant_outlined;
       case 'transport':
         return Icons.directions_car_outlined;

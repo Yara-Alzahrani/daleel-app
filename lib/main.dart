@@ -54,15 +54,18 @@ class DaleelApp extends StatelessWidget {
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide:
+                  const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide:
+                  const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide:
+                  const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -93,11 +96,13 @@ class DaleelApp extends StatelessWidget {
           '/account-settings': (context) => const AccountSettingsScreen(),
           '/past-plans': (context) => const PastPlansScreen(),
           '/trip-loading': (context) {
-            final tripId = ModalRoute.of(context)!.settings.arguments as String;
+            final tripId =
+                ModalRoute.of(context)!.settings.arguments as String? ?? '';
             return TripLoadingScreen(tripId: tripId);
           },
           '/itinerary': (context) {
-            final tripId = ModalRoute.of(context)!.settings.arguments as String;
+            final tripId =
+                ModalRoute.of(context)!.settings.arguments as String? ?? '';
             return ItineraryScreen(tripId: tripId);
           },
         },
