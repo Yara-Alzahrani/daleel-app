@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/review_changes_sheet.dart';
+import '../services/notification_service.dart'; // ✅
 import 'day_map_screen.dart';
 
 class ItineraryScreen extends StatefulWidget {
@@ -16,9 +17,6 @@ class ItineraryScreen extends StatefulWidget {
 
 class _ItineraryScreenState extends State<ItineraryScreen>
     with SingleTickerProviderStateMixin {
-
-  // ── State ─────────────────────────────────────────────────────────────────
-
   Map<String, dynamic>? _itinerary;
   String _tripCity = '';
   bool _isLoading = true;
@@ -27,22 +25,11 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   bool _isSaved = false;
   bool _isSaving = false;
   bool _isRegenerating = false;
-
-  /// True after user presses "Edit Plan" — shows swap/delete icons on cards.
   bool _isEditMode = false;
-
-  /// Incremented after each swap to force TabBarView to rebuild.
   int _itineraryVersion = 0;
-
-  /// Slots selected for swap — each: { dayNumber, period, timeRange, name }
   final List<Map<String, dynamic>> _selectedSlots = [];
-
-  /// Slots selected for deletion — each: { dayNumber, period, timeRange, name }
   final List<Map<String, dynamic>> _selectedForDelete = [];
-
   StreamSubscription<DocumentSnapshot>? _tripSubscription;
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -57,10 +44,6 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     super.dispose();
   }
 
-  // ── Firestore Real-Time Listener ──────────────────────────────────────────
-
-  /// Listens to live changes on the trip document and rebuilds the UI.
-  /// Also reads the trip city for use in venue filtering.
   void _listenToTrip() {
     _tripSubscription = FirebaseFirestore.instance
         .collection('trips')
@@ -80,15 +63,13 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         return;
       }
 
-      // Itinerary is stored as a JSON string — parse it.
       final itinerary = itineraryRaw is String
           ? jsonDecode(itineraryRaw) as Map<String, dynamic>
           : itineraryRaw as Map<String, dynamic>;
 
-      // City may be stored on the root doc or inside preferences.
-      final city = data['city'] as String?
-          ?? (data['preferences'] as Map?)?['city'] as String?
-          ?? '';
+      final city = data['city'] as String? ??
+          (data['preferences'] as Map?)?['city'] as String? ??
+          '';
 
       final days = itinerary['days'] as List? ?? [];
       final wasLoading = _isLoading;
@@ -112,66 +93,86 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         }
       });
 
-      if (wasRegenerating && mounted) _showSnackBar('Your plan has been updated!');
+      if (wasRegenerating && mounted)
+        _showSnackBar('Your plan has been updated!');
     }, onError: (e) {
-      setState(() { _error = 'Failed to load itinerary: $e'; _isLoading = false; });
+      setState(() {
+        _error = 'Failed to load itinerary: $e';
+        _isLoading = false;
+      });
     });
   }
 
-  // ── Edit Mode — Slot Selection ────────────────────────────────────────────
-
-  /// Toggles a slot for swap. Uses period + timeRange as a unique key
-  /// because a single day can have two slots with the same period.
-  void _toggleSlot(int dayNumber, String period, String timeRange, String name) {
+  void _toggleSlot(
+      int dayNumber, String period, String timeRange, String name) {
     setState(() {
-      final match = (s) => s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange;
+      final match = (s) =>
+          s['dayNumber'] == dayNumber &&
+          s['period'] == period &&
+          s['timeRange'] == timeRange;
       if (_selectedSlots.any(match)) {
         _selectedSlots.removeWhere(match);
       } else {
         _selectedForDelete.removeWhere(match);
-        _selectedSlots.add({'dayNumber': dayNumber, 'period': period, 'timeRange': timeRange, 'name': name});
+        _selectedSlots.add({
+          'dayNumber': dayNumber,
+          'period': period,
+          'timeRange': timeRange,
+          'name': name
+        });
       }
     });
   }
 
-  /// Toggles a slot for deletion. A slot cannot be in both lists at once.
-  void _toggleDelete(int dayNumber, String period, String timeRange, String name) {
+  void _toggleDelete(
+      int dayNumber, String period, String timeRange, String name) {
     setState(() {
-      final match = (s) => s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange;
+      final match = (s) =>
+          s['dayNumber'] == dayNumber &&
+          s['period'] == period &&
+          s['timeRange'] == timeRange;
       if (_selectedForDelete.any(match)) {
         _selectedForDelete.removeWhere(match);
       } else {
         _selectedSlots.removeWhere(match);
-        _selectedForDelete.add({'dayNumber': dayNumber, 'period': period, 'timeRange': timeRange, 'name': name});
+        _selectedForDelete.add({
+          'dayNumber': dayNumber,
+          'period': period,
+          'timeRange': timeRange,
+          'name': name
+        });
       }
     });
   }
 
-  // ── Swap & Delete Logic ───────────────────────────────────────────────────
-
-  /// Normalizes city name spelling to match Firestore venue data.
-  /// The AI sometimes writes cities differently (e.g. "Al-Ula" vs "AlUla").
   String _normalizeCity(String city) {
     switch (city.toLowerCase().trim().replaceAll('-', '').replaceAll(' ', '')) {
-      case 'alula': return 'AlUla';
-      case 'jeddah': case 'jiddah': return 'Jeddah';
-      case 'riyadh': return 'Riyadh';
-      case 'makkah': case 'mecca': return 'Makkah';
-      default: return city.trim();
+      case 'alula':
+        return 'AlUla';
+      case 'jeddah':
+      case 'jiddah':
+        return 'Jeddah';
+      case 'riyadh':
+        return 'Riyadh';
+      case 'makkah':
+      case 'mecca':
+        return 'Makkah';
+      default:
+        return city.trim();
     }
   }
 
-  /// Normalizes slot type to match venueType in Firestore.
-  /// The AI sometimes writes "meal" or "food" instead of "restaurant".
   String _normalizeType(String type) {
     switch (type.toLowerCase().trim()) {
-      case 'meal': case 'food': case 'dining': return 'restaurant';
-      default: return type.toLowerCase().trim();
+      case 'meal':
+      case 'food':
+      case 'dining':
+        return 'restaurant';
+      default:
+        return type.toLowerCase().trim();
     }
   }
 
-  /// Reads a Firestore field regardless of key capitalization.
-  /// Needed because venue data has inconsistent casing (e.g. "Name" vs "name").
   String? _venueField(Map<String, dynamic> data, String key) {
     if (data.containsKey(key)) return data[key]?.toString();
     final lower = key.toLowerCase();
@@ -181,19 +182,12 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     return null;
   }
 
-  /// Called when the user confirms changes in the review sheet.
-  /// 1. Applies deletions directly to the itinerary copy.
-  /// 2. For each swap: queries Firestore venues by city + type,
-  ///    picks a random alternative not already in the itinerary,
-  ///    and replaces name/description/location/tips (keeps time & cost).
-  /// 3. Writes the updated itinerary to Firestore.
   Future<void> _onConfirmRegenerate() async {
     setState(() => _isRegenerating = true);
     await _tripSubscription?.cancel();
     _tripSubscription = null;
 
     try {
-      // Deep copy to avoid mutating the in-memory itinerary before Firestore write.
       final copy = jsonDecode(jsonEncode(_itinerary!)) as Map<String, dynamic>;
       final days = (copy['days'] as List)
           .map((d) => Map<String, dynamic>.from(d as Map))
@@ -201,24 +195,23 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
       final city = _normalizeCity(_tripCity);
 
-      // Track used venue names to prevent duplicates in the same run.
       final used = days
           .expand((d) => (d['slots'] as List? ?? []))
           .map((s) => ((s as Map)['name'] as String? ?? '').toLowerCase())
           .toSet();
 
-      // ── Step 1: Deletions ────────────────────────────────────────────────
       for (final s in _selectedForDelete) {
-        final day = days.firstWhere((d) => d['dayNumber'] == s['dayNumber'], orElse: () => {});
+        final day = days.firstWhere((d) => d['dayNumber'] == s['dayNumber'],
+            orElse: () => {});
         if (day.isEmpty) continue;
         (day['slots'] as List).removeWhere((slot) =>
             (slot as Map)['period'] == s['period'] &&
             slot['timeRange'] == s['timeRange']);
       }
 
-      // ── Step 2: Swaps ────────────────────────────────────────────────────
       for (final s in _selectedSlots) {
-        final day = days.firstWhere((d) => d['dayNumber'] == s['dayNumber'], orElse: () => {});
+        final day = days.firstWhere((d) => d['dayNumber'] == s['dayNumber'],
+            orElse: () => {});
         if (day.isEmpty) continue;
 
         final slots = day['slots'] as List;
@@ -230,12 +223,11 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         final current = Map<String, dynamic>.from(slots[idx] as Map);
         final type = _normalizeType(current['type'] as String? ?? 'activity');
 
-        // Fetch all venues — no limit to ensure all cities are reachable.
-        final snap = await FirebaseFirestore.instance.collection('venues').get();
+        final snap =
+            await FirebaseFirestore.instance.collection('venues').get();
 
         final options = snap.docs.where((doc) {
           final v = doc.data();
-          // Normalize both sides to handle inconsistent Firestore casing.
           final vCity = _normalizeCity(_venueField(v, 'city') ?? '');
           final vType = _normalizeType(_venueField(v, 'venueType') ?? '');
           final vName = (_venueField(v, 'name') ?? '').toLowerCase().trim();
@@ -246,13 +238,14 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
         options.shuffle();
         final venue = options.first.data();
-        final newName = _venueField(venue, 'name') ?? (current['name'] as String? ?? '');
+        final newName =
+            _venueField(venue, 'name') ?? (current['name'] as String? ?? '');
 
-        // Replace only venue-specific fields; keep time, cost, period unchanged.
         slots[idx] = {
           ...current,
           'name': newName,
-          'description': _venueField(venue, 'description') ?? current['description'] ?? '',
+          'description':
+              _venueField(venue, 'description') ?? current['description'] ?? '',
           'location': {
             'name': newName,
             'area': city,
@@ -263,12 +256,14 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         used.add(newName.toLowerCase());
       }
 
-      // ── Step 3: Write to Firestore ───────────────────────────────────────
       copy['days'] = days;
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
-          .update({'itinerary': jsonEncode(copy), 'updatedAt': FieldValue.serverTimestamp()});
+          .update({
+        'itinerary': jsonEncode(copy),
+        'updatedAt': FieldValue.serverTimestamp()
+      });
 
       if (!mounted) return;
       setState(() {
@@ -289,15 +284,25 @@ class _ItineraryScreenState extends State<ItineraryScreen>
   }
 
   // ── Save Trip ─────────────────────────────────────────────────────────────
+  // ✅ التعديل الوحيد: جدولة الإشعارات قبل الحفظ
 
-  /// Marks the trip as saved and navigates to home.
   Future<void> _savePlan() async {
     setState(() => _isSaving = true);
     try {
+      final days = _itinerary!['days'] as List;
+
+      // جدول الإشعارات واحفظها محلياً
+      await NotificationService.scheduleAndSaveTrip(
+        tripId: widget.tripId,
+        days: days,
+        city: _tripCity,
+      );
+
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({'saved': true});
+
       setState(() => _isSaved = true);
       if (!mounted) return;
       await Future.delayed(const Duration(seconds: 1));
@@ -310,16 +315,13 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     }
   }
 
-  // ── View More ─────────────────────────────────────────────────────────────
-
-  /// Fetches the venue from Firestore by name and shows a details bottom sheet
-  /// with: rating, type, city, description, and Google Maps button.
   Future<void> _showVenueDetails(String venueName) async {
     Map<String, dynamic>? venue;
     try {
       final snap = await FirebaseFirestore.instance.collection('venues').get();
       for (final doc in snap.docs) {
-        if ((_venueField(doc.data(), 'name') ?? '').toLowerCase() == venueName.toLowerCase()) {
+        if ((_venueField(doc.data(), 'name') ?? '').toLowerCase() ==
+            venueName.toLowerCase()) {
           venue = doc.data();
           break;
         }
@@ -328,10 +330,13 @@ class _ItineraryScreenState extends State<ItineraryScreen>
 
     if (!mounted) return;
 
-    final name = venue != null ? (_venueField(venue, 'name') ?? venueName) : venueName;
+    final name =
+        venue != null ? (_venueField(venue, 'name') ?? venueName) : venueName;
     final desc = venue != null ? (_venueField(venue, 'description') ?? '') : '';
     final city = venue != null ? (_venueField(venue, 'city') ?? '') : '';
-    final type = venue != null ? (_venueField(venue, 'Type') ?? _venueField(venue, 'type') ?? '') : '';
+    final type = venue != null
+        ? (_venueField(venue, 'Type') ?? _venueField(venue, 'type') ?? '')
+        : '';
     final maps = venue != null ? (_venueField(venue, 'mapsLink') ?? '') : '';
     final rate = (venue?['Rate'] ?? venue?['rate'])?.toString();
 
@@ -352,62 +357,90 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag handle
-              Center(child: Container(
-                width: 40, height: 4,
+              Center(
+                  child: Container(
+                width: 40,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2)),
               )),
-              Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(name,
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
               const SizedBox(height: 8),
-              // Rating
               if (rate != null) ...[
                 Row(children: [
                   const Icon(Icons.star, color: Color(0xFFFFB800), size: 18),
                   const SizedBox(width: 4),
-                  Text(rate, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(rate,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 4),
-                  Text('/ 5', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                  Text('/ 5',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[500])),
                 ]),
                 const SizedBox(height: 12),
               ],
-              // Type & city chips
               Wrap(spacing: 8, children: [
-                if (type.isNotEmpty) Chip(
-                  label: Text(type, style: const TextStyle(fontSize: 12, color: Color(0xFF006E51))),
-                  backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
-                  padding: EdgeInsets.zero,
-                ),
-                if (city.isNotEmpty) Chip(
-                  label: Text(city, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                  backgroundColor: Colors.grey[100],
-                  padding: EdgeInsets.zero,
-                ),
+                if (type.isNotEmpty)
+                  Chip(
+                    label: Text(type,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF006E51))),
+                    backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
+                    padding: EdgeInsets.zero,
+                  ),
+                if (city.isNotEmpty)
+                  Chip(
+                    label: Text(city,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[700])),
+                    backgroundColor: Colors.grey[100],
+                    padding: EdgeInsets.zero,
+                  ),
               ]),
               const SizedBox(height: 16),
-              // Description
               if (desc.isNotEmpty) ...[
-                const Text('About', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                const Text('About',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
-                Text(desc, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
+                Text(desc,
+                    style: TextStyle(
+                        fontSize: 14, color: Colors.grey[700], height: 1.5)),
                 const SizedBox(height: 20),
               ],
-              // Google Maps button
-              if (maps.isNotEmpty) GestureDetector(
-                onTap: () async {
-                  final uri = Uri.parse(maps);
-                  if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
-                },
-                child: Container(
-                  width: double.infinity, height: 50,
-                  decoration: BoxDecoration(color: const Color(0xFF006E51), borderRadius: BorderRadius.circular(25)),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.map_outlined, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text('Open in Google Maps', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  ]),
+              if (maps.isNotEmpty)
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(maps);
+                    if (await canLaunchUrl(uri))
+                      launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFF006E51),
+                        borderRadius: BorderRadius.circular(25)),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map_outlined,
+                              color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Open in Google Maps',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                        ]),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -415,15 +448,16 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     );
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   void _showSnackBar(String msg, {bool isError = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(children: [
-        Icon(isError ? Icons.error_outline : Icons.check_circle, color: Colors.white, size: 18),
+        Icon(isError ? Icons.error_outline : Icons.check_circle,
+            color: Colors.white, size: 18),
         const SizedBox(width: 8),
-        Flexible(child: Text(msg, style: const TextStyle(fontWeight: FontWeight.w500))),
+        Flexible(
+            child:
+                Text(msg, style: const TextStyle(fontWeight: FontWeight.w500))),
       ]),
       backgroundColor: isError ? Colors.red : const Color(0xFF006E51),
       behavior: SnackBarBehavior.floating,
@@ -432,7 +466,8 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     ));
   }
 
-  double _calculateExpandedHeight(String title, String summary, Map<String, dynamic>? totalCost) {
+  double _calculateExpandedHeight(
+      String title, String summary, Map<String, dynamic>? totalCost) {
     double h = 180;
     if (title.length > 40) h += 24;
     if (title.length > 80) h += 24;
@@ -443,23 +478,29 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     return h;
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF006E51))));
+    if (_isLoading)
+      return const Scaffold(
+          body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF006E51))));
 
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(backgroundColor: const Color(0xFF006E51), foregroundColor: Colors.white, title: const Text('Itinerary')),
-        body: Center(child: Text(_error!, style: const TextStyle(color: Colors.red))),
+        appBar: AppBar(
+            backgroundColor: const Color(0xFF006E51),
+            foregroundColor: Colors.white,
+            title: const Text('Itinerary')),
+        body: Center(
+            child: Text(_error!, style: const TextStyle(color: Colors.red))),
       );
     }
 
     final days = _itinerary!['days'] as List;
     final title = _itinerary!['title'] as String? ?? 'Your Itinerary';
     final summary = _itinerary!['summary'] as String? ?? '';
-    final totalCost = _itinerary!['totalEstimatedCost'] as Map<String, dynamic>?;
+    final totalCost =
+        _itinerary!['totalEstimatedCost'] as Map<String, dynamic>?;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -469,64 +510,89 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Loading state during swap
             if (_isRegenerating)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Color(0xFF006E51), strokeWidth: 2)),
+                    SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF006E51), strokeWidth: 2)),
                     SizedBox(width: 12),
-                    Text('Updating your plan...', style: TextStyle(color: Color(0xFF006E51))),
+                    Text('Updating your plan...',
+                        style: TextStyle(color: Color(0xFF006E51))),
                   ],
                 ),
               )
-            // Trip already saved
             else if (_isSaved)
               const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.check_circle, color: Color(0xFF006E51), size: 20),
                   SizedBox(width: 8),
-                  Text('Trip saved', style: TextStyle(color: Color(0xFF006E51), fontWeight: FontWeight.w600, fontSize: 16)),
+                  Text('Trip saved',
+                      style: TextStyle(
+                          color: Color(0xFF006E51),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16)),
                 ],
               )
             else ...[
-              // "Start This Trip" — hidden in edit mode
               if (!_isEditMode) ...[
                 GestureDetector(
                   onTap: _isSaving ? null : _savePlan,
                   child: Container(
-                    width: double.infinity, height: 52,
+                    width: double.infinity,
+                    height: 52,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF006E51), Color(0xFFA384DA)]),
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFF006E51), Color(0xFFA384DA)]),
                       borderRadius: BorderRadius.circular(25),
-                      boxShadow: [BoxShadow(color: const Color(0xFF006E51).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+                      boxShadow: [
+                        BoxShadow(
+                            color: const Color(0xFF006E51).withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4))
+                      ],
                     ),
-                    child: Center(child: _isSaving
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.rocket_launch_outlined, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
-                            Text('Start This Trip', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                          ])),
+                    child: Center(
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                    Icon(Icons.rocket_launch_outlined,
+                                        color: Colors.white, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Start This Trip',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600)),
+                                  ])),
                   ),
                 ),
                 const SizedBox(height: 10),
               ],
-              // "Edit Plan" → enters edit mode
-              // "Update (n)" → opens review sheet
-              // "Cancel" → exits edit mode
               GestureDetector(
                 onTap: () {
                   if (!_isEditMode) {
                     setState(() => _isEditMode = true);
-                  } else if (_selectedSlots.isNotEmpty || _selectedForDelete.isNotEmpty) {
+                  } else if (_selectedSlots.isNotEmpty ||
+                      _selectedForDelete.isNotEmpty) {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                      shape: const RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(24))),
                       builder: (_) => ReviewChangesSheet(
                         selectedSlots: List.from(_selectedSlots),
                         selectedForDelete: List.from(_selectedForDelete),
@@ -538,29 +604,42 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                   }
                 },
                 child: Container(
-                  width: double.infinity, height: 52,
+                  width: double.infinity,
+                  height: 52,
                   decoration: BoxDecoration(
-                    color: (_isEditMode && (_selectedSlots.isNotEmpty || _selectedForDelete.isNotEmpty))
+                    color: (_isEditMode &&
+                            (_selectedSlots.isNotEmpty ||
+                                _selectedForDelete.isNotEmpty))
                         ? const Color(0xFF006E51).withOpacity(0.15)
                         : const Color(0xFF006E51).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(25),
                   ),
-                  child: Center(child: Row(
+                  child: Center(
+                      child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        !_isEditMode ? Icons.edit_outlined
-                            : (_selectedSlots.isNotEmpty || _selectedForDelete.isNotEmpty) ? Icons.check_circle_outline
-                            : Icons.close,
-                        color: const Color(0xFF006E51), size: 18,
+                        !_isEditMode
+                            ? Icons.edit_outlined
+                            : (_selectedSlots.isNotEmpty ||
+                                    _selectedForDelete.isNotEmpty)
+                                ? Icons.check_circle_outline
+                                : Icons.close,
+                        color: const Color(0xFF006E51),
+                        size: 18,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        !_isEditMode ? 'Edit Plan'
-                            : (_selectedSlots.isNotEmpty || _selectedForDelete.isNotEmpty)
+                        !_isEditMode
+                            ? 'Edit Plan'
+                            : (_selectedSlots.isNotEmpty ||
+                                    _selectedForDelete.isNotEmpty)
                                 ? 'Update (${_selectedSlots.length + _selectedForDelete.length})'
                                 : 'Cancel',
-                        style: const TextStyle(color: Color(0xFF006E51), fontSize: 15, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            color: Color(0xFF006E51),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500),
                       ),
                     ],
                   )),
@@ -580,7 +659,9 @@ class _ItineraryScreenState extends State<ItineraryScreen>
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [Color(0xFF006E51), Color(0xFFA384DA)]),
                 ),
                 child: SafeArea(
@@ -591,18 +672,32 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                       mainAxisAlignment: MainAxisAlignment.end,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text(title,
+                            style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                         const SizedBox(height: 6),
-                        Text(summary, style: TextStyle(fontSize: 13, color: Colors.white.withOpacity(0.85))),
+                        Text(summary,
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.white.withOpacity(0.85))),
                         if (totalCost != null) ...[
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(color: const Color(0xFFFFE381).withOpacity(0.3), borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFFFE381).withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(20)),
                             child: Text(
                               'Est. ${totalCost['amount']} ${totalCost['currency']}  •  ${totalCost['note'] ?? ''}',
-                              style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
-                              maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -628,13 +723,12 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         body: TabBarView(
           key: ValueKey(_itineraryVersion),
           controller: _tabController,
-          children: days.map((d) => _buildDayTab(d as Map<String, dynamic>)).toList(),
+          children:
+              days.map((d) => _buildDayTab(d as Map<String, dynamic>)).toList(),
         ),
       ),
     );
   }
-
-  // ── Day Tab ───────────────────────────────────────────────────────────────
 
   Widget _buildDayTab(Map<String, dynamic> day) {
     final slots = day['slots'] as List? ?? [];
@@ -645,33 +739,54 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Day header with theme, date, and Map button
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: const Color(0xFF006E51).withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+              color: const Color(0xFF006E51).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12)),
           child: Row(
             children: [
               const Icon(Icons.wb_sunny_outlined, color: Color(0xFF006E51)),
               const SizedBox(width: 12),
-              Expanded(child: Column(
+              Expanded(
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(theme, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF006E51))),
-                  Text(date, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  Text(theme,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF006E51))),
+                  Text(date,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 ],
               )),
               GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => DayMapScreen(dayNumber: dayNumber, dayTheme: theme, date: date,
-                      slots: slots.map((s) => s as Map<String, dynamic>).toList()),
-                )),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DayMapScreen(
+                          dayNumber: dayNumber,
+                          dayTheme: theme,
+                          date: date,
+                          slots: slots
+                              .map((s) => s as Map<String, dynamic>)
+                              .toList()),
+                    )),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: const Color(0xFF006E51), borderRadius: BorderRadius.circular(20)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF006E51),
+                      borderRadius: BorderRadius.circular(20)),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.map_outlined, color: Colors.white, size: 14),
                     SizedBox(width: 4),
-                    Text('Map', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('Map',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
                   ]),
                 ),
               ),
@@ -679,16 +794,13 @@ class _ItineraryScreenState extends State<ItineraryScreen>
           ),
         ),
         const SizedBox(height: 16),
-        ...slots.map((s) => _buildSlotCard(s as Map<String, dynamic>, dayNumber)).toList(),
+        ...slots
+            .map((s) => _buildSlotCard(s as Map<String, dynamic>, dayNumber))
+            .toList(),
       ],
     );
   }
 
-  // ── Slot Card ─────────────────────────────────────────────────────────────
-
-  /// Builds a card for one activity or restaurant slot.
-  /// Edit/delete icons appear only in edit mode.
-  /// "View More" is always visible and opens the venue details sheet.
   Widget _buildSlotCard(Map<String, dynamic> slot, int dayNumber) {
     final type = slot['type'] as String? ?? 'activity';
     final period = slot['period'] as String? ?? '';
@@ -701,92 +813,126 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     final tips = slot['tips'] as List? ?? [];
     final color = _slotColor(type);
 
-    // Selection state uses period + timeRange as a composite key
     final isSelected = _selectedSlots.any((s) =>
-        s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
+        s['dayNumber'] == dayNumber &&
+        s['period'] == period &&
+        s['timeRange'] == timeRange);
     final isDeleteSelected = _selectedForDelete.any((s) =>
-        s['dayNumber'] == dayNumber && s['period'] == period && s['timeRange'] == timeRange);
+        s['dayNumber'] == dayNumber &&
+        s['period'] == period &&
+        s['timeRange'] == timeRange);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDeleteSelected ? Colors.red.withOpacity(0.5)
-              : isSelected ? const Color(0xFFA384DA)
-              : color.withOpacity(0.3),
+          color: isDeleteSelected
+              ? Colors.red.withOpacity(0.5)
+              : isSelected
+                  ? const Color(0xFFA384DA)
+                  : color.withOpacity(0.3),
           width: (isSelected || isDeleteSelected) ? 2 : 1,
         ),
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Card header: period, time, type, and edit icons (edit mode only)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isDeleteSelected ? Colors.red.withOpacity(0.08) : color.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              color: isDeleteSelected
+                  ? Colors.red.withOpacity(0.08)
+                  : color.withOpacity(0.1),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
                 Icon(_periodIcon(period), size: 16, color: color),
                 const SizedBox(width: 6),
-                Expanded(child: Text('$period  •  $timeRange',
-                    style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text('$period  •  $timeRange',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: color,
+                            fontWeight: FontWeight.w500))),
                 Icon(_slotIcon(type), size: 16, color: color),
                 const SizedBox(width: 4),
                 Text(type, style: TextStyle(fontSize: 12, color: color)),
-                // Edit and delete icons — only shown in edit mode
                 if (!_isSaved && _isEditMode) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _toggleSlot(dayNumber, period, timeRange, name),
+                    onTap: () =>
+                        _toggleSlot(dayNumber, period, timeRange, name),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFA384DA).withOpacity(0.2) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFFA384DA).withOpacity(0.2)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(isSelected ? Icons.check_circle : Icons.edit_outlined,
-                          size: 16, color: isSelected ? const Color(0xFFA384DA) : color),
+                      child: Icon(
+                          isSelected ? Icons.check_circle : Icons.edit_outlined,
+                          size: 16,
+                          color: isSelected ? const Color(0xFFA384DA) : color),
                     ),
                   ),
                   const SizedBox(width: 4),
                   GestureDetector(
-                    onTap: () => _toggleDelete(dayNumber, period, timeRange, name),
+                    onTap: () =>
+                        _toggleDelete(dayNumber, period, timeRange, name),
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: isDeleteSelected ? Colors.red.withOpacity(0.1) : Colors.transparent,
+                        color: isDeleteSelected
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(isDeleteSelected ? Icons.delete : Icons.delete_outline,
-                          size: 16, color: isDeleteSelected ? Colors.red : Colors.grey),
+                      child: Icon(
+                          isDeleteSelected
+                              ? Icons.delete
+                              : Icons.delete_outline,
+                          size: 16,
+                          color: isDeleteSelected ? Colors.red : Colors.grey),
                     ),
                   ),
                 ],
               ],
             ),
           ),
-          // Card body: name, description, location, cost, tips, View More
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
                 const SizedBox(height: 6),
-                Text(description, style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                Text(description,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 12),
                   Row(children: [
-                    const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF006E51)),
+                    const Icon(Icons.location_on_outlined,
+                        size: 16, color: Color(0xFF006E51)),
                     const SizedBox(width: 4),
-                    Expanded(child: Text('${location['name']}, ${location['area']}',
-                        style: const TextStyle(fontSize: 13, color: Color(0xFF006E51)))),
+                    Expanded(
+                        child: Text('${location['name']}, ${location['area']}',
+                            style: const TextStyle(
+                                fontSize: 13, color: Color(0xFF006E51)))),
                   ]),
                 ],
                 const SizedBox(height: 8),
@@ -794,13 +940,18 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                   if (duration.isNotEmpty) ...[
                     const Icon(Icons.access_time, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(duration, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                    Text(duration,
+                        style:
+                            const TextStyle(fontSize: 13, color: Colors.grey)),
                     const SizedBox(width: 16),
                   ],
                   if (cost != null) ...[
-                    const Icon(Icons.attach_money, size: 14, color: Colors.grey),
-                    Flexible(child: Text(
-                      cost['amount'] == 0 ? 'Free'
+                    const Icon(Icons.attach_money,
+                        size: 14, color: Colors.grey),
+                    Flexible(
+                        child: Text(
+                      cost['amount'] == 0
+                          ? 'Free'
                           : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
                       style: const TextStyle(fontSize: 13, color: Colors.grey),
                     )),
@@ -810,17 +961,27 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 8),
-                  const Text('Tips', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFA384DA))),
+                  const Text('Tips',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFA384DA))),
                   const SizedBox(height: 4),
                   ...tips.map((tip) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('• ', style: TextStyle(color: Color(0xFFA384DA))),
-                      Expanded(child: Text(tip.toString(), style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
-                    ]),
-                  )),
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style: TextStyle(color: Color(0xFFA384DA))),
+                              Expanded(
+                                  child: Text(tip.toString(),
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[700]))),
+                            ]),
+                      )),
                 ],
-                // View More — always visible, fetches full venue data from Firestore
                 const SizedBox(height: 12),
                 GestureDetector(
                   onTap: () => _showVenueDetails(name),
@@ -828,11 +989,16 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF006E51).withOpacity(0.4)),
+                      border: Border.all(
+                          color: const Color(0xFF006E51).withOpacity(0.4)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Center(child: Text('View More',
-                        style: TextStyle(fontSize: 13, color: Color(0xFF006E51), fontWeight: FontWeight.w500))),
+                    child: const Center(
+                        child: Text('View More',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF006E51),
+                                fontWeight: FontWeight.w500))),
                   ),
                 ),
               ],
@@ -843,29 +1009,38 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     );
   }
 
-  // ── Color & Icon Helpers ──────────────────────────────────────────────────
-
   Color _slotColor(String type) {
     switch (type) {
-      case 'restaurant': case 'meal': return const Color(0xFFE67E22);
-      case 'transport': return const Color(0xFF2980B9);
-      default: return const Color(0xFF006E51);
+      case 'restaurant':
+      case 'meal':
+        return const Color(0xFFE67E22);
+      case 'transport':
+        return const Color(0xFF2980B9);
+      default:
+        return const Color(0xFF006E51);
     }
   }
 
   IconData _slotIcon(String type) {
     switch (type) {
-      case 'restaurant': case 'meal': return Icons.restaurant_outlined;
-      case 'transport': return Icons.directions_car_outlined;
-      default: return Icons.explore_outlined;
+      case 'restaurant':
+      case 'meal':
+        return Icons.restaurant_outlined;
+      case 'transport':
+        return Icons.directions_car_outlined;
+      default:
+        return Icons.explore_outlined;
     }
   }
 
   IconData _periodIcon(String period) {
     switch (period) {
-      case 'afternoon': return Icons.wb_cloudy_outlined;
-      case 'evening': return Icons.nights_stay_outlined;
-      default: return Icons.wb_sunny_outlined;
+      case 'afternoon':
+        return Icons.wb_cloudy_outlined;
+      case 'evening':
+        return Icons.nights_stay_outlined;
+      default:
+        return Icons.wb_sunny_outlined;
     }
   }
 }

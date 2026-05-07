@@ -21,6 +21,13 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
         ),
+        automaticallyImplyLeading: false,
+        // ✅ سهم يرجع للهوم دائماً
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context)
+              .pushNamedAndRemoveUntil('/home', (_) => false),
+        ),
         title: const Text('Profile',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
         centerTitle: true,
@@ -62,7 +69,6 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                // Account Settings - أبيض سادة + أيقونة gradient أخضر
                 _buildCard(
                   context,
                   icon: Icons.settings_outlined,
@@ -71,16 +77,6 @@ class ProfileScreen extends StatelessWidget {
                   iconGradient: const [Color(0xFF006E51), Color(0xFF4CAF82)],
                   onTap: () =>
                       Navigator.of(context).pushNamed('/account-settings'),
-                ),
-                const SizedBox(height: 20),
-                // Past Plans - أبيض سادة + أيقونة gradient بنفسجي
-                _buildCard(
-                  context,
-                  icon: Icons.history_outlined,
-                  title: 'Past Plans',
-                  subtitle: 'View your previous trips',
-                  iconGradient: const [Color(0xFF7B5EA7), Color(0xFFB39DDB)],
-                  onTap: () => Navigator.of(context).pushNamed('/past-plans'),
                 ),
               ],
             ),
@@ -154,7 +150,6 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // أيقونة مع gradient + لمعة
                 Container(
                   width: 56,
                   height: 56,
@@ -175,7 +170,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   child: Stack(
                     children: [
-                      // لمعة بيضاء خفيفة في الزاوية العلوية
                       Positioned(
                         top: 4,
                         left: 6,

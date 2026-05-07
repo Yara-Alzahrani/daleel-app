@@ -122,8 +122,14 @@ class HomeScreen extends StatelessWidget {
                   return _isTripCurrent(trip);
                 }).toList()
                   ..sort((a, b) {
-                    final aDate = ((a.data() as Map<String, dynamic>)['preferences'] as Map?)?['dateRange']?['startDate'] as String? ?? '';
-                    final bDate = ((b.data() as Map<String, dynamic>)['preferences'] as Map?)?['dateRange']?['startDate'] as String? ?? '';
+                    final aDate = ((a.data()
+                                as Map<String, dynamic>)['preferences']
+                            as Map?)?['dateRange']?['startDate'] as String? ??
+                        '';
+                    final bDate = ((b.data()
+                                as Map<String, dynamic>)['preferences']
+                            as Map?)?['dateRange']?['startDate'] as String? ??
+                        '';
                     return aDate.compareTo(bDate);
                   });
 
@@ -142,38 +148,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-      floatingActionButton: GestureDetector(
-        onTap: () => Navigator.of(context).pushNamed('/create-plan'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF006E51), Color(0xFFA384DA)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                  color: const Color(0xFF006E51).withOpacity(0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4)),
-            ],
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add, color: Colors.white),
-              SizedBox(width: 8),
-              Text('New Trip',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16)),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -325,8 +299,7 @@ class HomeScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
@@ -337,8 +310,8 @@ class HomeScreen extends StatelessWidget {
                   .delete();
             },
             child: const Text('Delete',
-                style: TextStyle(
-                    color: Colors.red, fontWeight: FontWeight.w600)),
+                style:
+                    TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -533,13 +506,21 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
 
     if (!mounted) return;
 
-    final name = venueData != null ? (_venueField(venueData, 'name') ?? venueName) : venueName;
-    final description = venueData != null ? (_venueField(venueData, 'description') ?? '') : '';
-    final city = venueData != null ? (_venueField(venueData, 'city') ?? '') : '';
+    final name = venueData != null
+        ? (_venueField(venueData, 'name') ?? venueName)
+        : venueName;
+    final description =
+        venueData != null ? (_venueField(venueData, 'description') ?? '') : '';
+    final city =
+        venueData != null ? (_venueField(venueData, 'city') ?? '') : '';
     // "Type" field may be capitalized in Firestore — check both casings
     final type = venueData != null
-        ? (_venueField(venueData, 'Type') ?? _venueField(venueData, 'type') ?? '') : '';
-    final mapsLink = venueData != null ? (_venueField(venueData, 'mapsLink') ?? '') : '';
+        ? (_venueField(venueData, 'Type') ??
+            _venueField(venueData, 'type') ??
+            '')
+        : '';
+    final mapsLink =
+        venueData != null ? (_venueField(venueData, 'mapsLink') ?? '') : '';
     // "Rate" field may be capitalized — check both casings
     final rateRaw = venueData?['Rate'] ?? venueData?['rate'];
     final rate = rateRaw != null ? rateRaw.toString() : null;
@@ -564,71 +545,99 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
               // Drag handle
               Center(
                 child: Container(
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                      color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              Text(name, style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(name,
+                  style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
               const SizedBox(height: 8),
               // Star rating
               if (rate != null) ...[
                 Row(children: [
                   const Icon(Icons.star, color: Color(0xFFFFB800), size: 18),
                   const SizedBox(width: 4),
-                  Text(rate, style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                  Text(rate,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87)),
                   const SizedBox(width: 4),
-                  Text('/ 5', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                  Text('/ 5',
+                      style: TextStyle(fontSize: 13, color: Colors.grey[500])),
                 ]),
                 const SizedBox(height: 12),
               ],
               // Type and city chips
               Wrap(spacing: 8, children: [
-                if (type.isNotEmpty) Chip(
-                  label: Text(type, style: const TextStyle(fontSize: 12, color: Color(0xFF006E51))),
-                  backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
-                  padding: EdgeInsets.zero,
-                ),
-                if (city.isNotEmpty) Chip(
-                  label: Text(city, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
-                  backgroundColor: Colors.grey[100],
-                  padding: EdgeInsets.zero,
-                ),
+                if (type.isNotEmpty)
+                  Chip(
+                    label: Text(type,
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF006E51))),
+                    backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
+                    padding: EdgeInsets.zero,
+                  ),
+                if (city.isNotEmpty)
+                  Chip(
+                    label: Text(city,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[700])),
+                    backgroundColor: Colors.grey[100],
+                    padding: EdgeInsets.zero,
+                  ),
               ]),
               const SizedBox(height: 16),
               // Description
               if (description.isNotEmpty) ...[
-                const Text('About', style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                const Text('About',
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87)),
                 const SizedBox(height: 6),
-                Text(description, style: TextStyle(
-                    fontSize: 14, color: Colors.grey[700], height: 1.5)),
+                Text(description,
+                    style: TextStyle(
+                        fontSize: 14, color: Colors.grey[700], height: 1.5)),
                 const SizedBox(height: 20),
               ],
               // Google Maps button — opens mapsLink in external browser
-              if (mapsLink.isNotEmpty) GestureDetector(
-                onTap: () async {
-                  final uri = Uri.parse(mapsLink);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
-                child: Container(
-                  width: double.infinity, height: 50,
-                  decoration: BoxDecoration(
-                      color: const Color(0xFF006E51),
-                      borderRadius: BorderRadius.circular(25)),
-                  child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.map_outlined, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text('Open in Google Maps', style: TextStyle(
-                        color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                  ]),
+              if (mapsLink.isNotEmpty)
+                GestureDetector(
+                  onTap: () async {
+                    final uri = Uri.parse(mapsLink);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                        color: const Color(0xFF006E51),
+                        borderRadius: BorderRadius.circular(25)),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map_outlined,
+                              color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text('Open in Google Maps',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                        ]),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -652,7 +661,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
             children: [
               Container(
                 margin: const EdgeInsets.only(top: 12),
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                     color: Colors.grey[300],
                     borderRadius: BorderRadius.circular(2)),
@@ -670,12 +680,17 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.location_on, color: Colors.white, size: 20),
+                    const Icon(Icons.location_on,
+                        color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      (widget.trip['preferences'] as Map<String, dynamic>?)?['city'] ?? '',
+                      (widget.trip['preferences']
+                              as Map<String, dynamic>?)?['city'] ??
+                          '',
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -683,7 +698,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
               if (_isLoading)
                 const Expanded(
                     child: Center(
-                        child: CircularProgressIndicator(color: Color(0xFF006E51))))
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF006E51))))
               else if (_itinerary == null)
                 Expanded(
                   child: Center(
@@ -696,7 +712,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                             _status == 'pending'
                                 ? Icons.hourglass_top_rounded
                                 : Icons.map_outlined,
-                            size: 56, color: Colors.grey[300],
+                            size: 56,
+                            color: Colors.grey[300],
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -720,7 +737,10 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                                   horizontal: 24, vertical: 12),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+                                  colors: [
+                                    Color(0xFF006E51),
+                                    Color(0xFFA384DA)
+                                  ],
                                   begin: Alignment.centerLeft,
                                   end: Alignment.centerRight,
                                 ),
@@ -746,8 +766,10 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                     indicatorColor: const Color(0xFF006E51),
                     labelColor: const Color(0xFF006E51),
                     unselectedLabelColor: Colors.grey,
-                    tabs: List.generate((_itinerary!['days'] as List).length, (i) {
-                      final day = (_itinerary!['days'] as List)[i] as Map<String, dynamic>;
+                    tabs: List.generate((_itinerary!['days'] as List).length,
+                        (i) {
+                      final day = (_itinerary!['days'] as List)[i]
+                          as Map<String, dynamic>;
                       return Tab(text: 'Day ${day['dayNumber']}');
                     }),
                   ),
@@ -771,7 +793,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
 
   /// Builds the content for one day tab — header with theme + map button,
   /// followed by all slot cards.
-  Widget _buildDayTab(Map<String, dynamic> day, ScrollController scrollController) {
+  Widget _buildDayTab(
+      Map<String, dynamic> day, ScrollController scrollController) {
     final slots = day['slots'] as List? ?? [];
     final theme = day['theme'] as String? ?? '';
     final date = day['date'] as String? ?? '';
@@ -795,21 +818,33 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(theme, style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF006E51))),
-                    Text(date, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    Text(theme,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Color(0xFF006E51))),
+                    Text(date,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
               GestureDetector(
-                onTap: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => DayMapScreen(
-                    dayNumber: dayNumber, dayTheme: theme, date: date,
-                    slots: slots.map((s) => s as Map<String, dynamic>).toList(),
-                  ),
-                )),
+                onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DayMapScreen(
+                        dayNumber: dayNumber,
+                        dayTheme: theme,
+                        date: date,
+                        slots: slots
+                            .map((s) => s as Map<String, dynamic>)
+                            .toList(),
+                      ),
+                    )),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFF006E51),
                     borderRadius: BorderRadius.circular(20),
@@ -817,8 +852,11 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.map_outlined, color: Colors.white, size: 14),
                     SizedBox(width: 4),
-                    Text('Map', style: TextStyle(
-                        color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('Map',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
                   ]),
                 ),
               ),
@@ -868,14 +906,19 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: color.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
                 Icon(periodIcon, size: 15, color: color),
                 const SizedBox(width: 6),
-                Expanded(child: Text('$period  •  $timeRange',
-                    style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500))),
+                Expanded(
+                    child: Text('$period  •  $timeRange',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.w500))),
                 Icon(icon, size: 15, color: color),
                 const SizedBox(width: 4),
                 Text(type, style: TextStyle(fontSize: 11, color: color)),
@@ -888,17 +931,24 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
                 const SizedBox(height: 4),
-                Text(description, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                Text(description,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 10),
                   Row(children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF006E51)),
+                    const Icon(Icons.location_on_outlined,
+                        size: 14, color: Color(0xFF006E51)),
                     const SizedBox(width: 4),
-                    Expanded(child: Text('${location['name']}, ${location['area']}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF006E51)))),
+                    Expanded(
+                        child: Text('${location['name']}, ${location['area']}',
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF006E51)))),
                   ]),
                 ],
                 const SizedBox(height: 6),
@@ -906,13 +956,18 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                   if (duration.isNotEmpty) ...[
                     const Icon(Icons.access_time, size: 13, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(duration, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(duration,
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(width: 12),
                   ],
                   if (cost != null) ...[
-                    const Icon(Icons.attach_money, size: 13, color: Colors.grey),
-                    Flexible(child: Text(
-                      cost['amount'] == 0 ? 'Free'
+                    const Icon(Icons.attach_money,
+                        size: 13, color: Colors.grey),
+                    Flexible(
+                        child: Text(
+                      cost['amount'] == 0
+                          ? 'Free'
                           : '${cost['amount']} ${cost['currency']}${cost['perPerson'] == true ? '/person' : ''}',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     )),
@@ -922,17 +977,26 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                   const SizedBox(height: 10),
                   const Divider(),
                   const SizedBox(height: 6),
-                  const Text('Tips', style: TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFA384DA))),
+                  const Text('Tips',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFA384DA))),
                   const SizedBox(height: 4),
                   ...tips.map((tip) => Padding(
-                    padding: const EdgeInsets.only(bottom: 3),
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('• ', style: TextStyle(color: Color(0xFFA384DA))),
-                      Expanded(child: Text(tip.toString(),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
-                    ]),
-                  )),
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style: TextStyle(color: Color(0xFFA384DA))),
+                              Expanded(
+                                  child: Text(tip.toString(),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700]))),
+                            ]),
+                      )),
                 ],
                 // View More — always visible, opens venue details sheet
                 const SizedBox(height: 10),
@@ -942,12 +1006,16 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF006E51).withOpacity(0.4)),
+                      border: Border.all(
+                          color: const Color(0xFF006E51).withOpacity(0.4)),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Center(child: Text('View More',
-                        style: TextStyle(
-                            fontSize: 12, color: Color(0xFF006E51), fontWeight: FontWeight.w500))),
+                    child: const Center(
+                        child: Text('View More',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF006E51),
+                                fontWeight: FontWeight.w500))),
                   ),
                 ),
               ],
@@ -962,25 +1030,36 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet>
 
   Color _slotColor(String type) {
     switch (type) {
-      case 'restaurant': case 'meal': return const Color(0xFFE67E22);
-      case 'transport': return const Color(0xFF2980B9);
-      default: return const Color(0xFF006E51);
+      case 'restaurant':
+      case 'meal':
+        return const Color(0xFFE67E22);
+      case 'transport':
+        return const Color(0xFF2980B9);
+      default:
+        return const Color(0xFF006E51);
     }
   }
 
   IconData _slotIcon(String type) {
     switch (type) {
-      case 'restaurant': case 'meal': return Icons.restaurant_outlined;
-      case 'transport': return Icons.directions_car_outlined;
-      default: return Icons.explore_outlined;
+      case 'restaurant':
+      case 'meal':
+        return Icons.restaurant_outlined;
+      case 'transport':
+        return Icons.directions_car_outlined;
+      default:
+        return Icons.explore_outlined;
     }
   }
 
   IconData _periodIcon(String period) {
     switch (period) {
-      case 'afternoon': return Icons.wb_cloudy_outlined;
-      case 'evening': return Icons.nights_stay_outlined;
-      default: return Icons.wb_sunny_outlined;
+      case 'afternoon':
+        return Icons.wb_cloudy_outlined;
+      case 'evening':
+        return Icons.nights_stay_outlined;
+      default:
+        return Icons.wb_sunny_outlined;
     }
   }
 }

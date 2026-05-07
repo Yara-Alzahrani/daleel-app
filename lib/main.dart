@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
@@ -12,6 +13,7 @@ import 'screens/main_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/account_settings_screen.dart';
 import 'screens/past_plans_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -25,6 +27,8 @@ void main() async {
   } catch (e) {
     print('Firebase initialization error: $e');
   }
+
+  await NotificationService.init(); // ✅
 
   runApp(const DaleelApp());
 }
@@ -54,18 +58,15 @@ class DaleelApp extends StatelessWidget {
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -95,6 +96,7 @@ class DaleelApp extends StatelessWidget {
           '/profile': (context) => const ProfileScreen(),
           '/account-settings': (context) => const AccountSettingsScreen(),
           '/past-plans': (context) => const PastPlansScreen(),
+          '/notifications': (context) => const NotificationsScreen(), // ✅
           '/trip-loading': (context) {
             final tripId =
                 ModalRoute.of(context)!.settings.arguments as String? ?? '';

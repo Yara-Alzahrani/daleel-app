@@ -28,6 +28,12 @@ class PastPlansScreen extends StatelessWidget {
           ),
         ),
         automaticallyImplyLeading: false,
+        // ✅ سهم يرجع للهوم دائماً
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.of(context)
+              .pushNamedAndRemoveUntil('/home', (_) => false),
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +51,9 @@ class PastPlansScreen extends StatelessWidget {
             ),
             child: const Text('Your Past Trips',
                 style: TextStyle(
-                    color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -58,7 +66,8 @@ class PastPlansScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF006E51)));
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF006E51)));
                 }
                 if (snapshot.hasError) {
                   return Center(
@@ -73,7 +82,8 @@ class PastPlansScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   itemCount: pastTrips.length,
                   itemBuilder: (context, index) {
-                    final trip = pastTrips[index].data() as Map<String, dynamic>;
+                    final trip =
+                        pastTrips[index].data() as Map<String, dynamic>;
                     final tripId = pastTrips[index].id;
                     return _buildTripCard(context, tripId, trip);
                   },
@@ -86,7 +96,8 @@ class PastPlansScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTripCard(BuildContext context, String tripId, Map<String, dynamic> trip) {
+  Widget _buildTripCard(
+      BuildContext context, String tripId, Map<String, dynamic> trip) {
     final prefs = trip['preferences'] as Map<String, dynamic>? ?? {};
     final city = prefs['city'] as String? ?? 'Unknown city';
     final dateRange = prefs['dateRange'] as Map<String, dynamic>? ?? {};
@@ -120,7 +131,8 @@ class PastPlansScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Row(
               children: [
@@ -128,10 +140,13 @@ class PastPlansScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(city,
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(12),
@@ -141,7 +156,8 @@ class PastPlansScreen extends StatelessWidget {
                       const Icon(Icons.history, color: Colors.white, size: 13),
                       const SizedBox(width: 4),
                       Text('$numberOfDays days',
-                          style: const TextStyle(color: Colors.white, fontSize: 12)),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -154,14 +170,17 @@ class PastPlansScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  const Icon(Icons.calendar_today_outlined, size: 14, color: Color(0xFF006E51)),
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 14, color: Color(0xFF006E51)),
                   const SizedBox(width: 6),
                   Text('$startDate → $endDate',
-                      style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                      style:
+                          const TextStyle(fontSize: 14, color: Colors.black87)),
                 ]),
                 const SizedBox(height: 8),
                 Row(children: [
-                  const Icon(Icons.people_outline, size: 14, color: Color(0xFFA384DA)),
+                  const Icon(Icons.people_outline,
+                      size: 14, color: Color(0xFFA384DA)),
                   const SizedBox(width: 6),
                   Text(
                     '$adults adult${adults != 1 ? 's' : ''}${children > 0 ? ', $children child${children != 1 ? 'ren' : ''}' : ''}',
@@ -188,7 +207,8 @@ class PastPlansScreen extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.info_outline, size: 14, color: Color(0xFFA384DA)),
+                            Icon(Icons.info_outline,
+                                size: 14, color: Color(0xFFA384DA)),
                             SizedBox(width: 6),
                             Text('Trip Details',
                                 style: TextStyle(
@@ -203,8 +223,8 @@ class PastPlansScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () =>
-                          Navigator.of(context).pushNamed('/itinerary', arguments: tripId),
+                      onTap: () => Navigator.of(context)
+                          .pushNamed('/itinerary', arguments: tripId),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
@@ -214,7 +234,8 @@ class PastPlansScreen extends StatelessWidget {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.map_outlined, size: 14, color: Color(0xFF006E51)),
+                            Icon(Icons.map_outlined,
+                                size: 14, color: Color(0xFF006E51)),
                             SizedBox(width: 6),
                             Text('View Plan',
                                 style: TextStyle(
@@ -254,7 +275,9 @@ class PastPlansScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Text('No past trips yet',
               style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[500])),
           const SizedBox(height: 8),
           Text('Your completed trips will appear here',
               style: TextStyle(fontSize: 14, color: Colors.grey[400])),
@@ -355,14 +378,21 @@ class _PastTripSheetState extends State<_PastTripSheet>
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) {
-        final name = venueData != null ? (_venueField(venueData, 'name') ?? venueName) : venueName;
-        final description =
-            venueData != null ? (_venueField(venueData, 'description') ?? '') : '';
-        final city = venueData != null ? (_venueField(venueData, 'city') ?? '') : '';
-        final type = venueData != null
-            ? (_venueField(venueData, 'Type') ?? _venueField(venueData, 'type') ?? '')
+        final name = venueData != null
+            ? (_venueField(venueData, 'name') ?? venueName)
+            : venueName;
+        final description = venueData != null
+            ? (_venueField(venueData, 'description') ?? '')
             : '';
-        final mapsLink = venueData != null ? (_venueField(venueData, 'mapsLink') ?? '') : '';
+        final city =
+            venueData != null ? (_venueField(venueData, 'city') ?? '') : '';
+        final type = venueData != null
+            ? (_venueField(venueData, 'Type') ??
+                _venueField(venueData, 'type') ??
+                '')
+            : '';
+        final mapsLink =
+            venueData != null ? (_venueField(venueData, 'mapsLink') ?? '') : '';
         final rateRaw = venueData?['Rate'] ?? venueData?['rate'];
         final rate = rateRaw != null ? rateRaw.toString() : null;
 
@@ -383,36 +413,46 @@ class _PastTripSheetState extends State<_PastTripSheet>
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                        color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2)),
                   ),
                 ),
                 Text(name,
                     style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
                 const SizedBox(height: 8),
-                if (rate != null)
+                if (rate != null) ...[
                   Row(children: [
                     const Icon(Icons.star, color: Color(0xFFFFB800), size: 18),
                     const SizedBox(width: 4),
                     Text(rate,
                         style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87)),
                     const SizedBox(width: 4),
-                    Text('/ 5', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                    Text('/ 5',
+                        style:
+                            TextStyle(fontSize: 13, color: Colors.grey[500])),
                   ]),
-                if (rate != null) const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                ],
                 Wrap(spacing: 8, children: [
                   if (type.isNotEmpty)
                     Chip(
                       label: Text(type,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF006E51))),
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF006E51))),
                       backgroundColor: const Color(0xFF006E51).withOpacity(0.1),
                       padding: EdgeInsets.zero,
                     ),
                   if (city.isNotEmpty)
                     Chip(
                       label: Text(city,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[700])),
                       backgroundColor: Colors.grey[100],
                       padding: EdgeInsets.zero,
                     ),
@@ -421,10 +461,13 @@ class _PastTripSheetState extends State<_PastTripSheet>
                 if (description.isNotEmpty) ...[
                   const Text('About',
                       style: TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87)),
                   const SizedBox(height: 6),
                   Text(description,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
+                      style: TextStyle(
+                          fontSize: 14, color: Colors.grey[700], height: 1.5)),
                   const SizedBox(height: 20),
                 ],
                 if (mapsLink.isNotEmpty)
@@ -432,7 +475,8 @@ class _PastTripSheetState extends State<_PastTripSheet>
                     onTap: () async {
                       final uri = Uri.parse(mapsLink);
                       if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
                       }
                     },
                     child: Container(
@@ -442,17 +486,17 @@ class _PastTripSheetState extends State<_PastTripSheet>
                           color: const Color(0xFF006E51),
                           borderRadius: BorderRadius.circular(25)),
                       child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.map_outlined, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Text('Open in Google Maps',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.map_outlined,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 8),
+                            Text('Open in Google Maps',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
                     ),
                   ),
               ],
@@ -482,7 +526,8 @@ class _PastTripSheetState extends State<_PastTripSheet>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2)),
               ),
               Container(
                 margin: const EdgeInsets.all(16),
@@ -497,12 +542,17 @@ class _PastTripSheetState extends State<_PastTripSheet>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.location_on, color: Colors.white, size: 20),
+                    const Icon(Icons.location_on,
+                        color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      (widget.trip['preferences'] as Map<String, dynamic>?)?['city'] ?? '',
+                      (widget.trip['preferences']
+                              as Map<String, dynamic>?)?['city'] ??
+                          '',
                       style: const TextStyle(
-                          color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -510,14 +560,14 @@ class _PastTripSheetState extends State<_PastTripSheet>
               if (_isLoading)
                 const Expanded(
                     child: Center(
-                        child: CircularProgressIndicator(color: Color(0xFF006E51))))
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF006E51))))
               else if (_itinerary == null)
                 const Expanded(
-                  child: Center(
-                    child: Text('Itinerary not available',
-                        style: TextStyle(color: Colors.grey, fontSize: 15)),
-                  ),
-                )
+                    child: Center(
+                        child: Text('Itinerary not available',
+                            style:
+                                TextStyle(color: Colors.grey, fontSize: 15))))
               else ...[
                 Container(
                   color: Colors.white,
@@ -527,8 +577,10 @@ class _PastTripSheetState extends State<_PastTripSheet>
                     indicatorColor: const Color(0xFF006E51),
                     labelColor: const Color(0xFF006E51),
                     unselectedLabelColor: Colors.grey,
-                    tabs: List.generate((_itinerary!['days'] as List).length, (i) {
-                      final day = (_itinerary!['days'] as List)[i] as Map<String, dynamic>;
+                    tabs: List.generate((_itinerary!['days'] as List).length,
+                        (i) {
+                      final day = (_itinerary!['days'] as List)[i]
+                          as Map<String, dynamic>;
                       return Tab(text: 'Day ${day['dayNumber']}');
                     }),
                   ),
@@ -537,7 +589,8 @@ class _PastTripSheetState extends State<_PastTripSheet>
                   child: TabBarView(
                     controller: _tabController,
                     children: (_itinerary!['days'] as List).map((d) {
-                      return _buildDayTab(d as Map<String, dynamic>, scrollController);
+                      return _buildDayTab(
+                          d as Map<String, dynamic>, scrollController);
                     }).toList(),
                   ),
                 ),
@@ -549,7 +602,8 @@ class _PastTripSheetState extends State<_PastTripSheet>
     );
   }
 
-  Widget _buildDayTab(Map<String, dynamic> day, ScrollController scrollController) {
+  Widget _buildDayTab(
+      Map<String, dynamic> day, ScrollController scrollController) {
     final slots = day['slots'] as List? ?? [];
     final theme = day['theme'] as String? ?? '';
     final date = day['date'] as String? ?? '';
@@ -577,37 +631,40 @@ class _PastTripSheetState extends State<_PastTripSheet>
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
                             color: Color(0xFF006E51))),
-                    Text(date, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    Text(date,
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
                   ],
                 ),
               ),
               GestureDetector(
                 onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DayMapScreen(
-                      dayNumber: dayNumber,
-                      dayTheme: theme,
-                      date: date,
-                      slots: slots.map((s) => s as Map<String, dynamic>).toList(),
-                    ),
-                  ),
-                ),
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DayMapScreen(
+                        dayNumber: dayNumber,
+                        dayTheme: theme,
+                        date: date,
+                        slots: slots
+                            .map((s) => s as Map<String, dynamic>)
+                            .toList(),
+                      ),
+                    )),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                       color: const Color(0xFF006E51),
                       borderRadius: BorderRadius.circular(20)),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.map_outlined, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
-                      Text('Map',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.map_outlined, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text('Map',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ]),
                 ),
               ),
             ],
@@ -653,7 +710,8 @@ class _PastTripSheetState extends State<_PastTripSheet>
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: color.withOpacity(0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
@@ -662,7 +720,9 @@ class _PastTripSheetState extends State<_PastTripSheet>
                 Expanded(
                     child: Text('$period  •  $timeRange',
                         style: TextStyle(
-                            fontSize: 12, color: color, fontWeight: FontWeight.w500))),
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.w500))),
                 Icon(icon, size: 15, color: color),
                 const SizedBox(width: 4),
                 Text(type, style: TextStyle(fontSize: 11, color: color)),
@@ -676,17 +736,22 @@ class _PastTripSheetState extends State<_PastTripSheet>
               children: [
                 Text(name,
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87)),
                 const SizedBox(height: 4),
-                Text(description, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                Text(description,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700])),
                 if (location != null) ...[
                   const SizedBox(height: 10),
                   Row(children: [
-                    const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF006E51)),
+                    const Icon(Icons.location_on_outlined,
+                        size: 14, color: Color(0xFF006E51)),
                     const SizedBox(width: 4),
                     Expanded(
                         child: Text('${location['name']}, ${location['area']}',
-                            style: const TextStyle(fontSize: 12, color: Color(0xFF006E51)))),
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF006E51)))),
                   ]),
                 ],
                 const SizedBox(height: 6),
@@ -694,11 +759,14 @@ class _PastTripSheetState extends State<_PastTripSheet>
                   if (duration.isNotEmpty) ...[
                     const Icon(Icons.access_time, size: 13, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text(duration, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(duration,
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey)),
                     const SizedBox(width: 12),
                   ],
                   if (cost != null) ...[
-                    const Icon(Icons.attach_money, size: 13, color: Colors.grey),
+                    const Icon(Icons.attach_money,
+                        size: 13, color: Colors.grey),
                     Flexible(
                         child: Text(
                       cost['amount'] == 0
@@ -714,16 +782,23 @@ class _PastTripSheetState extends State<_PastTripSheet>
                   const SizedBox(height: 6),
                   const Text('Tips',
                       style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFA384DA))),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFA384DA))),
                   const SizedBox(height: 4),
                   ...tips.map((tip) => Padding(
                         padding: const EdgeInsets.only(bottom: 3),
-                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Text('• ', style: TextStyle(color: Color(0xFFA384DA))),
-                          Expanded(
-                              child: Text(tip.toString(),
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
-                        ]),
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('• ',
+                                  style: TextStyle(color: Color(0xFFA384DA))),
+                              Expanded(
+                                  child: Text(tip.toString(),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700]))),
+                            ]),
                       )),
                 ],
                 const SizedBox(height: 10),
@@ -733,16 +808,16 @@ class _PastTripSheetState extends State<_PastTripSheet>
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF006E51).withOpacity(0.4)),
+                      border: Border.all(
+                          color: const Color(0xFF006E51).withOpacity(0.4)),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Center(
-                      child: Text('View More',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF006E51),
-                              fontWeight: FontWeight.w500)),
-                    ),
+                        child: Text('View More',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF006E51),
+                                fontWeight: FontWeight.w500))),
                   ),
                 ),
               ],
