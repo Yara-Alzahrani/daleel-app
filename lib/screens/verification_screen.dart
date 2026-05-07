@@ -23,10 +23,10 @@ class VerificationScreen extends StatefulWidget {
 
 class _VerificationScreenState extends State<VerificationScreen> {
   final List<TextEditingController> _controllers = List.generate(
-    4,
+    6,
     (index) => TextEditingController(),
   );
-  final List<FocusNode> _focusNodes = List.generate(4, (index) => FocusNode());
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isLoading = false;
 
   @override
@@ -43,7 +43,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   String get _otp => _controllers.map((c) => c.text).join();
 
   Future<void> _verifyOTP() async {
-    if (_otp.length != 4) {
+    if (_otp.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter complete verification code'),
@@ -72,7 +72,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
       );
     } else if (mounted) {
       if (widget.isSignUp) {
-        // Navigate to personal info for new users
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -82,8 +81,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
           ),
         );
       } else {
-        // Navigate to home for existing users
-        Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/home', (route) => false);
       }
     }
   }
@@ -116,7 +115,8 @@ class _VerificationScreenState extends State<VerificationScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'we have sent the verification code to you',
+                'We have sent the verification code to\n${widget.phoneNumber}',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -125,10 +125,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
               const SizedBox(height: 60),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(4, (index) {
+                children: List.generate(6, (index) {
                   return SizedBox(
-                    width: 70,
-                    height: 70,
+                    width: 50,
+                    height: 60,
                     child: TextField(
                       controller: _controllers[index],
                       focusNode: _focusNodes[index],
@@ -136,7 +136,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       keyboardType: TextInputType.number,
                       maxLength: 1,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold,
                       ),
                       inputFormatters: [
@@ -169,13 +169,13 @@ class _VerificationScreenState extends State<VerificationScreen> {
                         ),
                       ),
                       onChanged: (value) {
-                        if (value.isNotEmpty && index < 3) {
+                        if (value.isNotEmpty && index < 5) {
                           _focusNodes[index + 1].requestFocus();
                         } else if (value.isEmpty && index > 0) {
                           _focusNodes[index - 1].requestFocus();
                         }
-                        // Auto-submit when all 4 digits are entered
-                        if (index == 3 && value.isNotEmpty) {
+                        // Auto-submit when all 6 digits are entered
+                        if (index == 5 && value.isNotEmpty) {
                           _verifyOTP();
                         }
                       },
@@ -186,7 +186,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
               const SizedBox(height: 40),
               TextButton(
                 onPressed: () {
-                  // TODO: Implement resend OTP
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Verification code resent'),

@@ -13,6 +13,8 @@ import 'screens/profile_screen.dart';
 import 'screens/account_settings_screen.dart';
 import 'screens/past_plans_screen.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,18 +56,15 @@ class DaleelApp extends StatelessWidget {
             fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(25),
-              borderSide:
-                  const BorderSide(color: Color(0xFFA384DA), width: 2),
+              borderSide: const BorderSide(color: Color(0xFFA384DA), width: 2),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -85,7 +84,18 @@ class DaleelApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const MainScreen(),
+        home: StreamBuilder<User?>(
+          stream: FirebaseAuth.instance.authStateChanges(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SplashScreen();
+            }
+            if (snapshot.hasData) {
+              return const MainScreen();
+            }
+            return const WelcomeScreen();
+          },
+        ),
         routes: {
           '/welcome': (context) => const WelcomeScreen(),
           '/login': (context) => const LoginScreen(),
