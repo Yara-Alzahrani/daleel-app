@@ -473,10 +473,20 @@ class _PastTripSheetState extends State<_PastTripSheet>
                 if (mapsLink.isNotEmpty)
                   GestureDetector(
                     onTap: () async {
-                      final uri = Uri.parse(mapsLink);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri,
+                      final geoUri =
+                          Uri.parse('geo:0,0?q=${Uri.encodeComponent(name)}');
+                      final mapsUri = Uri.parse(mapsLink);
+                      try {
+                        await launchUrl(geoUri,
                             mode: LaunchMode.externalApplication);
+                      } catch (_) {
+                        try {
+                          await launchUrl(mapsUri,
+                              mode: LaunchMode.externalApplication);
+                        } catch (_) {
+                          await launchUrl(mapsUri,
+                              mode: LaunchMode.platformDefault);
+                        }
                       }
                     },
                     child: Container(

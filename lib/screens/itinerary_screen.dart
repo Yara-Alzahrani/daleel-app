@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/review_changes_sheet.dart';
-import '../services/notification_service.dart'; // ✅
+import '../services/notification_service.dart';
 import 'day_map_screen.dart';
 
 class ItineraryScreen extends StatefulWidget {
@@ -283,26 +283,19 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     }
   }
 
-  // ── Save Trip ─────────────────────────────────────────────────────────────
-  // ✅ التعديل الوحيد: جدولة الإشعارات قبل الحفظ
-
   Future<void> _savePlan() async {
     setState(() => _isSaving = true);
     try {
       final days = _itinerary!['days'] as List;
-
-      // جدول الإشعارات واحفظها محلياً
       await NotificationService.scheduleAndSaveTrip(
         tripId: widget.tripId,
         days: days,
         city: _tripCity,
       );
-
       await FirebaseFirestore.instance
           .collection('trips')
           .doc(widget.tripId)
           .update({'saved': true});
-
       setState(() => _isSaved = true);
       if (!mounted) return;
       await Future.delayed(const Duration(seconds: 1));
@@ -315,6 +308,7 @@ class _ItineraryScreenState extends State<ItineraryScreen>
     }
   }
 
+  // ✅ التعديل الوحيد: إصلاح فتح Google Maps
   Future<void> _showVenueDetails(String venueName) async {
     Map<String, dynamic>? venue;
     try {
@@ -414,12 +408,26 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                         fontSize: 14, color: Colors.grey[700], height: 1.5)),
                 const SizedBox(height: 20),
               ],
+              // ✅ زر Google Maps مع fallback
               if (maps.isNotEmpty)
                 GestureDetector(
                   onTap: () async {
-                    final uri = Uri.parse(maps);
-                    if (await canLaunchUrl(uri))
-                      launchUrl(uri, mode: LaunchMode.externalApplication);
+                    // أولاً: جرب geo: عشان يفتح تطبيق الخرائط مباشرة
+                    final geoUri =
+                        Uri.parse('geo:0,0?q=${Uri.encodeComponent(name)}');
+                    final mapsUri = Uri.parse(maps);
+                    try {
+                      await launchUrl(geoUri,
+                          mode: LaunchMode.externalApplication);
+                    } catch (_) {
+                      try {
+                        await launchUrl(mapsUri,
+                            mode: LaunchMode.externalApplication);
+                      } catch (_) {
+                        await launchUrl(mapsUri,
+                            mode: LaunchMode.platformDefault);
+                      }
+                    }
                   },
                   child: Container(
                     width: double.infinity,
