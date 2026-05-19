@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/review_changes_sheet.dart';
+import '../widgets/review_sheet.dart';
 import '../services/notification_service.dart';
 import 'day_map_screen.dart';
 
@@ -454,6 +455,68 @@ class _ItineraryScreenState extends State<ItineraryScreen>
         ),
       ),
     );
+  }
+
+  void _showReviewSheet(Map<String, dynamic> slot, int dayNumber) {
+    final period = slot['period'] as String? ?? '';
+    final timeRange = slot['timeRange'] as String? ?? '';
+    final name = slot['name'] as String? ?? '';
+    final currentRating = (slot['rating'] as num?)?.toInt() ?? 0;
+    final currentReview = slot['review'] as String? ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReviewSheet(
+        slotName: name,
+        initialRating: currentRating,
+        initialReview: currentReview,
+        onSubmit: (rating, review) =>
+            _submitReview(dayNumber, period, timeRange, rating, review),
+      ),
+    );
+  }
+
+  Future<void> _submitReview(int dayNumber, String period, String timeRange,
+      int rating, String review) async {
+    if (_itinerary == null) return;
+
+    final copy = jsonDecode(jsonEncode(_itinerary!)) as Map<String, dynamic>;
+    final days = (copy['days'] as List)
+        .map((d) => Map<String, dynamic>.from(d as Map))
+        .toList();
+
+    for (final day in days) {
+      if (day['dayNumber'] != dayNumber) continue;
+      final slots = (day['slots'] as List)
+          .map((s) => Map<String, dynamic>.from(s as Map))
+          .toList();
+      for (final slot in slots) {
+        if (slot['period'] == period && slot['timeRange'] == timeRange) {
+          slot['rating'] = rating;
+          slot['review'] = review;
+          slot['reviewedAt'] = DateTime.now().toIso8601String();
+        }
+      }
+      day['slots'] = slots;
+    }
+    copy['days'] = days;
+
+    await FirebaseFirestore.instance
+        .collection('trips')
+        .doc(widget.tripId)
+        .update({
+      'itinerary': jsonEncode(copy),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+    setState(() {
+      _itinerary = copy;
+      _itineraryVersion++;
+    });
+    _showSnackBar('Review saved!');
   }
 
   void _showSnackBar(String msg, {bool isError = false}) {
@@ -1009,11 +1072,98 @@ class _ItineraryScreenState extends State<ItineraryScreen>
                                 fontWeight: FontWeight.w500))),
                   ),
                 ),
+                if (_isSaved) ...[
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  _buildReviewSection(slot, dayNumber),
+                ],
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildReviewSection(Map<String, dynamic> slot, int dayNumber) {
+    final rating = (slot['rating'] as num?)?.toInt() ?? 0;
+    final review = slot['review'] as String? ?? '';
+    final hasReview = rating > 0;
+
+    if (!hasReview) {
+      return GestureDetector(
+        onTap: () => _showReviewSheet(slot, dayNumber),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF006E51), Color(0xFFA384DA)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.star_border_rounded, color: Colors.white, size: 18),
+                SizedBox(width: 6),
+                Text('Rate This Activity',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Your Review',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFA384DA))),
+            const Spacer(),
+            Row(
+              children: List.generate(5, (i) {
+                return Icon(
+                  i < rating
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  size: 18,
+                  color: const Color(0xFFFFB400),
+                );
+              }),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _showReviewSheet(slot, dayNumber),
+              child: const Icon(Icons.edit_outlined,
+                  size: 16, color: Color(0xFF006E51)),
+            ),
+          ],
+        ),
+        if (review.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            review,
+            style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+                fontStyle: FontStyle.italic),
+          ),
+        ],
+      ],
     );
   }
 

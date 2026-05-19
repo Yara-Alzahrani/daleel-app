@@ -93,6 +93,32 @@ class _CreateStepState extends State<CreateStep> {
     }
   }
 
+  // Normalizes city name to a canonical form so n8n receives a consistent value.
+  String _normalizeCity(String city) {
+    switch (city.toLowerCase().trim().replaceAll('-', '').replaceAll(' ', '')) {
+      case 'alula':
+        return 'AlUla';
+      case 'jeddah':
+      case 'jiddah':
+        return 'Jeddah';
+      case 'riyadh':
+        return 'Riyadh';
+      case 'makkah':
+      case 'mecca':
+        return 'Makkah';
+      default:
+        return city.trim();
+    }
+  }
+
+  // All Saudi cities the app supports — used to build the exclusion list.
+  static const List<String> _allSupportedCities = [
+    'Riyadh',
+    'Jeddah',
+    'AlUla',
+    'Makkah',
+  ];
+
   // Calls the n8n webhook without blocking the UI.
   // n8n will write the itinerary back to Firestore asynchronously.
   Future<void> _callWebhook(
@@ -103,11 +129,22 @@ class _CreateStepState extends State<CreateStep> {
     String budgetRange,
   ) async {
     try {
+      final cityName = _normalizeCity(prefs.city);
+      final excludeCities =
+          _allSupportedCities.where((c) => c != cityName).toList();
+      final cityConstraint =
+          'STRICT REQUIREMENT: Every single activity, restaurant, and venue in this plan MUST be physically located in $cityName, Saudi Arabia. Do not include any venue, restaurant, attraction, or location from any other city under any circumstances. Excluded cities: ${excludeCities.join(", ")}.';
+
       final body = jsonEncode({
         'tripId': tripId,
         'userId': userId,
+        'city': cityName,
+        'country': 'Saudi Arabia',
+        'cityConstraint': cityConstraint,
+        'excludeCities': excludeCities,
         'preferences': {
-          'city': prefs.city,
+          'city': cityName,
+          'country': 'Saudi Arabia',
           'travelers': {
             'adults': prefs.numberOfParents,
             'children': prefs.numberOfChildren,
