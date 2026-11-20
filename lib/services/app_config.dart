@@ -1,9 +1,10 @@
 class AppConfig {
-  static const String n8nWebhookUrl =
-      'https://REDACTED.n8n.cloud/webhook/generate-trip';
+  // Provided at build time, e.g.:
+  // flutter run --dart-define=N8N_WEBHOOK_URL=... --dart-define=N8N_REGENERATE_URL=...
+  static const String n8nWebhookUrl = String.fromEnvironment('N8N_WEBHOOK_URL');
 
   static const String n8nRegenerateUrl =
-      'https://REDACTED.n8n.cloud/webhook/regenerate-slot';
+      String.fromEnvironment('N8N_REGENERATE_URL');
 
   static const Map<String, String> budgetRanges = {
     'economy': '100-300',
